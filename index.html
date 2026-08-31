@@ -137,34 +137,41 @@
         } catch (_) {}
       })();
     </script>
-    <script type="module" crossorigin src="/openx-studio/assets/index-B356686T.js"></script>
-    <link rel="modulepreload" crossorigin href="/openx-studio/assets/vendor-icons-DX2Qm9zE.js">
-    <link rel="modulepreload" crossorigin href="/openx-studio/assets/vendor-radix-BLlw1JzV.js">
-    <link rel="stylesheet" crossorigin href="/openx-studio/assets/index-oI-USh_Q.css">
+    <script type="module" crossorigin src="/openx-studio/assets/index-BWZOYfxX.js"></script>
+    <link rel="modulepreload" crossorigin href="/openx-studio/assets/rolldown-runtime-CbXtAM7H.js">
+    <link rel="modulepreload" crossorigin href="/openx-studio/assets/vendor-icons-DjXSGv0U.js">
+    <link rel="modulepreload" crossorigin href="/openx-studio/assets/vendor-radix-DvhlC1eb.js">
+    <link rel="stylesheet" crossorigin href="/openx-studio/assets/index-BXZyz7Tn.css">
   </head>
   <body>
-    <!-- Main Application Mounting Point with SEO & LLM Fallback Content -->
     <div id="root">
-      <header style="padding: 1rem; border-bottom: 1px solid #334155;">
-        <h1>OpenX Studio — ASAM OpenSCENARIO &amp; OpenDRIVE Simulator</h1>
-        <p>In-browser scenario player, visual editor, and 3D simulator for autonomous driving scenarios.</p>
-      </header>
-      <main style="padding: 1rem;">
-        <section>
-          <h2>Features &amp; Capabilities</h2>
-          <ul>
-            <li><strong>Zero Install</strong>: Full esmini C++ simulation engine running in WebAssembly (WASM).</li>
-            <li><strong>Standards Compliance</strong>: Supports ASAM OpenSCENARIO (.xosc) and OpenDRIVE (.xodr).</li>
-            <li><strong>High-Performance 3D</strong>: Three.js viewport with Orbit, Follow Ego, and Top-Down camera perspectives.</li>
-            <li><strong>Web Worker Concurrency</strong>: Off-main-thread stepping for smooth 60+ FPS UI responsiveness.</li>
-            <li><strong>Inspector &amp; Telemetry</strong>: Real-time speed (km/h, m/s), coordinates, vehicle parameters, and storyboards.</li>
-          </ul>
-        </section>
-        <section>
-          <h2>Machine-Readable Documentation</h2>
-          <p>For AI crawlers and LLM agents: read <a href="./llms.txt">llms.txt</a> or <a href="./llms-full.txt">llms-full.txt</a>.</p>
-        </section>
-      </main>
+      <style>
+        .initial-loader {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          height: 100vh;
+          width: 100vw;
+          background-color: #ffffff;
+          margin: 0;
+          padding: 0;
+        }
+        .initial-loader img {
+          width: 64px;
+          height: 64px;
+          animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: .5; }
+        }
+        html[data-theme='dark'] .initial-loader {
+          background-color: hsl(224, 71%, 4%);
+        }
+      </style>
+      <div class="initial-loader">
+        <img src="./icon.svg" alt="Loading OpenX Studio..." />
+      </div>
     </div>
 
     <!-- Noscript Fallback for Search Crawlers without JS -->
@@ -179,6 +186,14 @@
         <p>
           JavaScript is required to run the WebAssembly simulation engine and WebGL 3D viewport. Please enable JavaScript in your browser.
         </p>
+        <h2>Features &amp; Capabilities</h2>
+        <ul>
+          <li><strong>Zero Install</strong>: Full esmini C++ simulation engine running in WebAssembly (WASM).</li>
+          <li><strong>Standards Compliance</strong>: Supports ASAM OpenSCENARIO (.xosc) and OpenDRIVE (.xodr).</li>
+          <li><strong>High-Performance 3D</strong>: Three.js viewport with Orbit, Follow Ego, and Top-Down camera perspectives.</li>
+          <li><strong>Web Worker Concurrency</strong>: Off-main-thread stepping for smooth 60+ FPS UI responsiveness.</li>
+          <li><strong>Inspector &amp; Telemetry</strong>: Real-time speed (km/h, m/s), coordinates, vehicle parameters, and storyboards.</li>
+        </ul>
         <p>
           For automated scraping and LLM agents, explore <a href="./llms.txt">/llms.txt</a> and <a href="./llms-full.txt">/llms-full.txt</a>.
         </p>
