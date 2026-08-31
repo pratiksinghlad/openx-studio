@@ -4,6 +4,7 @@ import { ScenarioRoadGeometry, ScenarioFrame, ScenarioMetadata } from './types/s
 import { FilePayload } from './types/protocol';
 import { CameraMode, CAMERA_MODES, VIEW_THEMES } from './renderer/types';
 import { useTheme } from './hooks/useTheme';
+import { useRouter } from './hooks/useRouter';
 import { FileUploader } from './components/FileUploader';
 import type { ScenarioViewportHandle, ViewportState } from './components/ScenarioViewport';
 import { ErrorBanner } from './components/ErrorBanner';
@@ -38,6 +39,10 @@ const PlayerControls = lazy(() =>
   import('./components/PlayerControls').then((m) => ({ default: m.PlayerControls }))
 );
 
+const AboutPage = lazy(() =>
+  import('./components/AboutPage').then((m) => ({ default: m.AboutPage }))
+);
+
 export function App() {
   const [workerClient, setWorkerClient] = useState<SimulationWorkerClient | null>(null);
   const [isWorkerReady, setIsWorkerReady] = useState(false);
@@ -62,6 +67,7 @@ export function App() {
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const { isAbout, navigateToAbout, navigateToHome } = useRouter();
   const [zoomPercent, setZoomPercent] = useState(100);
   const [angleDeg, setAngleDeg] = useState(0);
 
@@ -176,6 +182,29 @@ export function App() {
     };
   }, []);
 
+  const handleOpenAbout = useCallback(() => {
+    navigateToAbout();
+  }, [navigateToAbout]);
+
+  const handleCloseAbout = useCallback(() => {
+    navigateToHome();
+  }, [navigateToHome]);
+
+  const handleGoHome = useCallback(() => {
+    if (workerClient) {
+      workerClient.stop();
+    }
+    setIsLoaded(false);
+    setScenarioName('');
+    setRoadGeometry(null);
+    setCurrentFrame(null);
+    setScenarioMetadata(null);
+    setShowInspector(false);
+    setErrorMessage(null);
+    setErrorDetails(null);
+    navigateToHome();
+  }, [workerClient, navigateToHome]);
+
   const handleScenarioReady = useCallback(
     (xosc: FilePayload, xodr: FilePayload, extraFiles?: FilePayload[]) => {
       if (!workerClient) return;
@@ -284,13 +313,31 @@ export function App() {
     viewportRef.current?.resetAngle();
   }, []);
 
+  if (isAbout) {
+    return (
+      <Suspense
+        fallback={
+          <div className="min-h-screen w-full bg-background flex items-center justify-center text-muted-foreground text-sm font-medium">
+            Loading About...
+          </div>
+        }
+      >
+        <AboutPage onBackToSimulator={handleCloseAbout} />
+      </Suspense>
+    );
+  }
+
   return (
     <div className="flex flex-col h-screen w-screen bg-background text-foreground overflow-hidden">
       {/* Top Navbar */}
       {!isFullscreen && (
-        <header className="h-16 min-h-16 bg-card/95 backdrop-blur-md border-b border-border flex items-center justify-between px-5 z-30 shrink-0 shadow-sm">
+        <header className="relative h-16 min-h-16 bg-card/95 backdrop-blur-md border-b border-border flex items-center justify-between px-5 z-30 shrink-0 shadow-sm">
           {/* Brand Logo & Title */}
-          <div className="flex items-center gap-3">
+          <button 
+            onClick={handleGoHome}
+            className="flex items-center gap-3 relative z-10 text-left hover:opacity-80 transition-opacity focus:outline-none"
+            aria-label="Go to Home"
+          >
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center text-white shadow-md shadow-blue-500/25 shrink-0">
               <Car className="h-5 w-5" />
             </div>
@@ -302,47 +349,49 @@ export function App() {
                 OpenSCENARIO & OpenDRIVE
               </span>
             </div>
-          </div>
+          </button>
 
-          {/* Scenario Badge or Engine Status */}
-          <div className="flex items-center justify-center">
-            {scenarioName ? (
-              <Badge
-                variant="outline"
-                className="gap-2 py-1.5 px-4 bg-primary/10 border-primary/30 text-primary font-bold text-sm max-w-[min(45vw,420px)] truncate shadow-xs"
-                title={`Loaded Scenario: ${scenarioName}`}
-              >
-                <Layers className="h-4 w-4 shrink-0" />
-                <span className="truncate">{scenarioName}</span>
-              </Badge>
-            ) : (
-              <Badge
-                variant="outline"
-                className="gap-2 py-1.5 px-4 text-sm text-muted-foreground bg-muted/40 font-medium"
-              >
-                <Sparkles
-                  className={cn(
-                    'h-4 w-4 shrink-0',
-                    isLoadingScenario
-                      ? 'text-amber-500 animate-spin'
+          {/* Scenario Badge or Engine Status - Centered on page in top bar */}
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none max-w-[calc(100vw-440px)] z-0">
+            <div className="pointer-events-auto truncate">
+              {scenarioName ? (
+                <Badge
+                  variant="outline"
+                  className="gap-2 py-1.5 px-4 bg-primary/10 border-primary/30 text-primary font-bold text-sm max-w-[min(45vw,420px)] truncate shadow-xs"
+                  title={`Loaded Scenario: ${scenarioName}`}
+                >
+                  <Layers className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{scenarioName}</span>
+                </Badge>
+              ) : (
+                <Badge
+                  variant="outline"
+                  className="gap-2 py-1.5 px-4 text-sm text-muted-foreground bg-muted/40 font-medium shadow-xs"
+                >
+                  <Sparkles
+                    className={cn(
+                      'h-4 w-4 shrink-0',
+                      isLoadingScenario
+                        ? 'text-amber-500 animate-spin'
+                        : isWorkerReady
+                        ? 'text-emerald-500'
+                        : 'text-primary'
+                    )}
+                  />
+                  <span>
+                    {isLoadingScenario
+                      ? 'Loading Simulation Engine...'
                       : isWorkerReady
-                      ? 'text-emerald-500'
-                      : 'text-primary'
-                  )}
-                />
-                <span>
-                  {isLoadingScenario
-                    ? 'Loading Simulation Engine...'
-                    : isWorkerReady
-                    ? 'esmini WASM Engine Ready'
-                    : 'Ready to Load Scenario'}
-                </span>
-              </Badge>
-            )}
+                      ? 'esmini WASM Engine Ready'
+                      : 'Ready to Load Scenario'}
+                  </span>
+                </Badge>
+              )}
+            </div>
           </div>
 
           {/* Header Action Buttons */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 relative z-10">
             {isLoaded && (
               <Button
                 variant={showInspector ? 'default' : 'outline'}
@@ -355,6 +404,18 @@ export function App() {
                 <span>Scenario Info</span>
               </Button>
             )}
+
+            <Button
+              variant="outline"
+              size="default"
+              onClick={handleOpenAbout}
+              className="gap-1.5 h-9 px-3 text-sm font-semibold shadow-xs"
+              title="About OpenX Studio & Privacy"
+              aria-label="About OpenX Studio & Privacy"
+            >
+              <Info className="h-4 w-4" />
+              <span className="hidden sm:inline">About</span>
+            </Button>
 
             <Button
               variant="outline"
@@ -437,6 +498,7 @@ export function App() {
             currentFrame={currentFrame}
             scenarioName={scenarioName}
             onFocusEntity={(id) => setSelectedEntityId(id)}
+            onOpenAbout={handleOpenAbout}
           />
         </Suspense>
 

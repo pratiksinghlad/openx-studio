@@ -59,6 +59,7 @@ Website: https://pratiksinghlad.github.io/openx-studio/
 
 ## Key Files & Machine-Readable Resources
 
+- About & Privacy Page: [about](https://pratiksinghlad.github.io/openx-studio/about) - Privacy architecture and open-source licensing.
 - Full LLM Documentation: [llms-full.txt](https://pratiksinghlad.github.io/openx-studio/llms-full.txt) - In-depth technical guide, API schema, RPC protocols, and XML examples.
 - XML Sitemap: [sitemap.xml](https://pratiksinghlad.github.io/openx-studio/sitemap.xml) - Complete page and resource index for web crawlers.
 - Robots Rules: [robots.txt](https://pratiksinghlad.github.io/openx-studio/robots.txt) - Universal crawl and scraper access permissions.

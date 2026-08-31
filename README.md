@@ -1,10 +1,10 @@
 # OpenX Studio
 
 > **In-Browser Scenario Player, Visual Editor, and Simulator for ASAM OpenSCENARIO & OpenDRIVE**  
-> Powered by **esmini WebAssembly (WASM)**, **Three.js**, **React 19**, **TypeScript**, and **Web Workers**.
+> Powered by **esmini WebAssembly (WASM)**, **Three.js**, **React**, **TypeScript**, and **Web Workers**.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js Version](https://img.shields.io/badge/Node.js-20%2B-brightgreen.svg)](https://nodejs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-LTS-brightgreen.svg)](https://nodejs.org/)
 [![Simulation Engine: esmini (MPL 2.0)](https://img.shields.io/badge/Simulation%20Engine-esmini%20(MPL%202.0)-blue.svg)](https://github.com/esmini/esmini)
 [![ASAM Standards: OpenDRIVE & OpenSCENARIO](https://img.shields.io/badge/ASAM%20Standards-OpenDRIVE%20%7C%20OpenSCENARIO-orange.svg)](https://www.asam.net)
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-success.svg)](https://pratiksinghlad.github.io/openx-studio/)
@@ -80,24 +80,24 @@ npm install
 ## Requirement and Package
 
 ### System Requirements
-- **Node.js**: 20.0.0 or higher recommended (LTS version)
-- **Package Manager**: npm (v9+), pnpm, or yarn
-- **Web Browser**: Modern browser with WebGL 2.0 and WebAssembly support (Chrome 90+, Edge 90+, Firefox 88+, Safari 15+)
+- **Node.js**: LTS version recommended
+- **Package Manager**: npm, pnpm, or yarn
+- **Web Browser**: Modern browser with WebGL and WebAssembly support (Chrome, Edge, Firefox, Safari)
 
 ### Core Packages & Dependencies
 
 #### Application & UI Framework
-- **React (19.0.0)** & **React DOM (19.0.0)**: Modern React interface with concurrent rendering.
-- **Three.js (0.174.0)**: 3D WebGL rendering engine for road geometry, vehicle meshes, and lighting.
+- **React** & **React DOM**: Modern React interface with concurrent rendering.
+- **Three.js**: 3D WebGL rendering engine for road geometry, vehicle meshes, and lighting.
 - **Radix UI Primitives**: Accessible UI components (`@radix-ui/react-dialog`, `@radix-ui/react-slider`, `@radix-ui/react-tabs`, `@radix-ui/react-scroll-area`, `@radix-ui/react-tooltip`).
-- **Lucide React (1.16.0)**: Crisp SVG icons.
-- **Tailwind CSS (3.4.17)**, **Autoprefixer**, **PostCSS**: Utility-first styling with dark/light theme switching.
+- **Lucide React**: Crisp SVG icons.
+- **Tailwind CSS**, **Autoprefixer**, **PostCSS**: Utility-first styling with dark/light theme switching.
 
 #### Build Tools & Utilities
-- **Vite (6.2.0)**: Blazing fast ESM bundler and development server configured with output to `build/`.
-- **TypeScript (5.7.3)**: Strict static typing and protocol interfaces.
-- **vite-plugin-compression (0.5.1)**: Automatic Gzip and Brotli asset pre-compression.
-- **gh-pages (6.3.0)**: Automated deployment pipeline to GitHub Pages.
+- **Vite**: Blazing fast ESM bundler and development server configured with output to `build/`.
+- **TypeScript**: Strict static typing and protocol interfaces.
+- **vite-plugin-compression**: Automatic Gzip and Brotli asset pre-compression.
+- **gh-pages**: Automated deployment pipeline to GitHub Pages.
 
 ---
 
@@ -121,8 +121,8 @@ Permission is hereby granted, free of charge, to any person obtaining a copy...
 ### Standards & Trademark Notice (ASAM / OpenX / ASME)
 
 - **ASAM Standards**:
-  - **ASAM OpenSCENARIO®** (v1.0, v1.1, v1.2, v1.3): Defines the dynamic behavior and storyboards of autonomous vehicle scenarios.
-  - **ASAM OpenDRIVE®** (v1.4, v1.5, v1.6, v1.7): Defines the static road network geometry, lane topological connectivity, and road markings.
+  - **ASAM OpenSCENARIO®**: Defines the dynamic behavior and storyboards of autonomous vehicle scenarios.
+  - **ASAM OpenDRIVE®**: Defines the static road network geometry, lane topological connectivity, and road markings.
   - **ASAM OpenX®**: Umbrella term for the ASAM open standard family (OpenDRIVE, OpenSCENARIO, OpenCRG, OpenODD).
 - **Trademark Notice**:
   - **ASAM®**, **ASAM OpenDRIVE®**, **ASAM OpenSCENARIO®**, and **ASAM OpenX®** are registered trademarks of **[ASAM e.V.](https://www.asam.net)** (Association for Standardisation of Automation and Measuring Systems).
