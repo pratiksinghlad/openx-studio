@@ -1,12 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { SimulationWorkerClient } from './worker/workerClient';
 import { ScenarioRoadGeometry, ScenarioFrame, ScenarioMetadata } from './types/simulation';
 import { FilePayload } from './types/protocol';
-import { CameraMode, ViewTheme, CAMERA_MODES, VIEW_THEMES } from './renderer/ScenarioRenderer';
+import { CameraMode, CAMERA_MODES, VIEW_THEMES } from './renderer/types';
+import { useTheme } from './hooks/useTheme';
 import { FileUploader } from './components/FileUploader';
-import { ScenarioViewport, ScenarioViewportHandle, ViewportState } from './components/ScenarioViewport';
-import { PlayerControls } from './components/PlayerControls';
-import { ScenarioInspector } from './components/ScenarioInspector';
+import type { ScenarioViewportHandle, ViewportState } from './components/ScenarioViewport';
 import { ErrorBanner } from './components/ErrorBanner';
 import { Button } from './components/ui/button';
 import { Badge } from './components/ui/badge';
@@ -27,6 +26,18 @@ import {
 } from 'lucide-react';
 import { cn } from './lib/utils';
 
+const ScenarioViewport = lazy(() =>
+  import('./components/ScenarioViewport').then((m) => ({ default: m.ScenarioViewport }))
+);
+
+const ScenarioInspector = lazy(() =>
+  import('./components/ScenarioInspector').then((m) => ({ default: m.ScenarioInspector }))
+);
+
+const PlayerControls = lazy(() =>
+  import('./components/PlayerControls').then((m) => ({ default: m.PlayerControls }))
+);
+
 export function App() {
   const [workerClient, setWorkerClient] = useState<SimulationWorkerClient | null>(null);
   const [isWorkerReady, setIsWorkerReady] = useState(false);
@@ -39,8 +50,8 @@ export function App() {
   const [speed, setSpeed] = useState(1.0);
   const [cameraMode, setCameraMode] = useState<CameraMode>(CAMERA_MODES.ORBIT);
   const [cameraResetTrigger, setCameraResetTrigger] = useState(0);
-  const [theme, setTheme] = useState<ViewTheme>(VIEW_THEMES.LIGHT);
-  const [statusText, setStatusText] = useState('Initializing WASM...');
+  const { theme, toggleTheme, isSystem } = useTheme();
+  const [statusText, setStatusText] = useState('Ready');
   const [scenarioName, setScenarioName] = useState<string>('');
   const [roadGeometry, setRoadGeometry] = useState<ScenarioRoadGeometry | null>(null);
   const [currentFrame, setCurrentFrame] = useState<ScenarioFrame | null>(null);
@@ -56,17 +67,6 @@ export function App() {
 
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<ScenarioViewportHandle>(null);
-
-  // Apply theme to document element
-  useEffect(() => {
-    const isDark = theme === VIEW_THEMES.DARK;
-    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [theme]);
 
   // Initialize Worker Client
   useEffect(() => {
@@ -130,7 +130,31 @@ export function App() {
       setStatusText('Error');
     });
 
+    let idleId: number | null = null;
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+
+    if (typeof window !== 'undefined') {
+      if ('requestIdleCallback' in window) {
+        idleId = (window as unknown as { requestIdleCallback: (cb: () => void, opt?: { timeout: number }) => number }).requestIdleCallback(
+          () => {
+            client.init();
+          },
+          { timeout: 4000 }
+        );
+      } else {
+        timerId = setTimeout(() => {
+          client.init();
+        }, 2500);
+      }
+    }
+
     return () => {
+      if (idleId !== null && 'cancelIdleCallback' in window) {
+        (window as unknown as { cancelIdleCallback: (id: number) => void }).cancelIdleCallback(idleId);
+      }
+      if (timerId !== null) {
+        clearTimeout(timerId);
+      }
       unsubReady();
       unsubLoaded();
       unsubFrame();
@@ -229,10 +253,6 @@ export function App() {
     }
   }, []);
 
-  const handleToggleTheme = useCallback(() => {
-    setTheme((prev) => (prev === VIEW_THEMES.LIGHT ? VIEW_THEMES.DARK : VIEW_THEMES.LIGHT));
-  }, []);
-
   const handleToggleFullscreen = useCallback(() => {
     if (!playerContainerRef.current) return;
 
@@ -303,11 +323,19 @@ export function App() {
                 <Sparkles
                   className={cn(
                     'h-4 w-4 shrink-0',
-                    isWorkerReady ? 'text-emerald-500' : 'text-amber-500 animate-spin'
+                    isLoadingScenario
+                      ? 'text-amber-500 animate-spin'
+                      : isWorkerReady
+                      ? 'text-emerald-500'
+                      : 'text-primary'
                   )}
                 />
                 <span>
-                  {isWorkerReady ? 'esmini WASM Engine Ready' : 'Initializing WASM Engine...'}
+                  {isLoadingScenario
+                    ? 'Loading Simulation Engine...'
+                    : isWorkerReady
+                    ? 'esmini WASM Engine Ready'
+                    : 'Ready to Load Scenario'}
                 </span>
               </Badge>
             )}
@@ -331,10 +359,20 @@ export function App() {
             <Button
               variant="outline"
               size="default"
-              onClick={handleToggleTheme}
+              onClick={toggleTheme}
               className="h-9 w-9 p-0 text-foreground shadow-xs"
-              title={theme === VIEW_THEMES.LIGHT ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
-              aria-label="Toggle Theme"
+              title={
+                theme === VIEW_THEMES.LIGHT
+                  ? isSystem
+                    ? 'Switch to Dark Mode (System theme auto-detected)'
+                    : 'Switch to Dark Mode'
+                  : isSystem
+                  ? 'Switch to Light Mode (System theme auto-detected)'
+                  : 'Switch to Light Mode'
+              }
+              aria-label={
+                theme === VIEW_THEMES.LIGHT ? 'Switch to Dark Mode' : 'Switch to Light Mode'
+              }
             >
               {theme === VIEW_THEMES.LIGHT ? (
                 <Moon className="h-4.5 w-4.5" />
@@ -373,30 +411,34 @@ export function App() {
         )}
 
         {/* 3D Simulation Viewport */}
-        <ScenarioViewport
-          ref={viewportRef}
-          roadGeometry={roadGeometry}
-          currentFrame={currentFrame}
-          cameraMode={cameraMode}
-          cameraResetTrigger={cameraResetTrigger}
-          theme={theme}
-          isLoaded={isLoaded}
-          statusText={statusText}
-          onOpenInspector={() => setShowInspector(true)}
-          onFocusEntity={(id) => setSelectedEntityId(id)}
-          selectedEntityId={selectedEntityId}
-          onViewportState={handleViewportState}
-        />
+        <Suspense fallback={<div className="absolute inset-0 bg-background" />}>
+          <ScenarioViewport
+            ref={viewportRef}
+            roadGeometry={roadGeometry}
+            currentFrame={currentFrame}
+            cameraMode={cameraMode}
+            cameraResetTrigger={cameraResetTrigger}
+            theme={theme}
+            isLoaded={isLoaded}
+            statusText={statusText}
+            onOpenInspector={() => setShowInspector(true)}
+            onFocusEntity={(id) => setSelectedEntityId(id)}
+            selectedEntityId={selectedEntityId}
+            onViewportState={handleViewportState}
+          />
+        </Suspense>
 
         {/* Scenario & Road Inspector Sheet */}
-        <ScenarioInspector
-          isOpen={showInspector}
-          onClose={() => setShowInspector(false)}
-          metadata={scenarioMetadata}
-          currentFrame={currentFrame}
-          scenarioName={scenarioName}
-          onFocusEntity={(id) => setSelectedEntityId(id)}
-        />
+        <Suspense fallback={null}>
+          <ScenarioInspector
+            isOpen={showInspector}
+            onClose={() => setShowInspector(false)}
+            metadata={scenarioMetadata}
+            currentFrame={currentFrame}
+            scenarioName={scenarioName}
+            onFocusEntity={(id) => setSelectedEntityId(id)}
+          />
+        </Suspense>
 
         {/* Scenario Upload Dialog (Modal when loaded, or fullscreen on initial state) */}
         {!isLoaded ? (
@@ -431,30 +473,32 @@ export function App() {
         )}
 
         {/* Minimal Unobtrusive Player Controls Dock */}
-        <PlayerControls
-          isPlaying={isPlaying}
-          isLoaded={isLoaded}
-          isCompleted={isCompleted}
-          simulationTime={simulationTime}
-          duration={duration}
-          speed={speed}
-          cameraMode={cameraMode}
-          isFullscreen={isFullscreen}
-          zoomPercent={zoomPercent}
-          angleDeg={angleDeg}
-          onPlay={handlePlay}
-          onPause={handlePause}
-          onStop={handleStop}
-          onStepForward={handleStepForward}
-          onStepBackward={handleStepBackward}
-          onSeek={handleSeek}
-          onSpeedChange={handleSpeedChange}
-          onCameraModeChange={handleCameraModeChange}
-          onToggleFullscreen={handleToggleFullscreen}
-          onZoomIn={handleZoomIn}
-          onZoomOut={handleZoomOut}
-          onAngleReset={handleAngleReset}
-        />
+        <Suspense fallback={null}>
+          <PlayerControls
+            isPlaying={isPlaying}
+            isLoaded={isLoaded}
+            isCompleted={isCompleted}
+            simulationTime={simulationTime}
+            duration={duration}
+            speed={speed}
+            cameraMode={cameraMode}
+            isFullscreen={isFullscreen}
+            zoomPercent={zoomPercent}
+            angleDeg={angleDeg}
+            onPlay={handlePlay}
+            onPause={handlePause}
+            onStop={handleStop}
+            onStepForward={handleStepForward}
+            onStepBackward={handleStepBackward}
+            onSeek={handleSeek}
+            onSpeedChange={handleSpeedChange}
+            onCameraModeChange={handleCameraModeChange}
+            onToggleFullscreen={handleToggleFullscreen}
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onAngleReset={handleAngleReset}
+          />
+        </Suspense>
       </main>
     </div>
   );

@@ -1,0 +1,10 @@
+# Robots.txt for OpenX Studio
+# Website: https://pratiksinghlad.github.io/openx-studio/
+# Allows full crawling, indexing, and AI agent scraping
+
+User-agent: *
+Allow: /
+
+# Sitemap & LLMs.txt references
+Sitemap: https://pratiksinghlad.github.io/openx-studio/sitemap.xml
+LLMs-Txt: https://pratiksinghlad.github.io/openx-studio/llms.txt

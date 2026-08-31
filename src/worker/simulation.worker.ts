@@ -241,42 +241,82 @@ function writeVirtualFile(path: string, content: string | ArrayBuffer | Uint8Arr
   esminiModule.FS.writeFile(normalized, data);
 }
 
-async function initEsmini(): Promise<void> {
+let initPromise: Promise<boolean> | null = null;
+
+async function initEsmini(): Promise<boolean> {
   if (esminiModule) {
     postMsg({ type: 'READY' });
-    return;
+    return true;
   }
 
-  try {
-    postLog('info', 'Initializing esmini WebAssembly runtime...');
-    const response = await fetch('/esmini.js');
-    if (!response.ok) {
-      throw new Error(`Failed to load /esmini.js: status ${response.status}`);
+  if (initPromise) {
+    return initPromise;
+  }
+
+  initPromise = (async () => {
+    try {
+      postLog('info', 'Initializing esmini WebAssembly runtime...');
+      const baseUrl = import.meta.env.BASE_URL.endsWith('/')
+        ? import.meta.env.BASE_URL
+        : `${import.meta.env.BASE_URL}/`;
+      const esminiUrl = `${baseUrl}esmini.js`;
+      const response = await fetch(esminiUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to load ${esminiUrl}: status ${response.status}`);
+      }
+      const jsCode = await response.text();
+
+      const factory = new Function(`${jsCode}; return esmini;`)();
+      esminiModule = await factory({
+        noInitialRun: true,
+        print: (text: string) => postLog('info', `[esmini] ${text}`),
+        printErr: (text: string) => postLog('warn', `[esmini] ${text}`),
+      });
+
+      postLog('info', 'esmini WASM runtime ready.');
+      postMsg({ type: 'READY' });
+      return true;
+    } catch (err: any) {
+      postError('Failed to initialize esmini WASM', err?.message || String(err));
+      return false;
+    } finally {
+      initPromise = null;
     }
-    const jsCode = await response.text();
+  })();
 
-    const factory = new Function(`${jsCode}; return esmini;`)();
-    esminiModule = await factory({
-      noInitialRun: true,
-      print: (text: string) => postLog('info', `[esmini] ${text}`),
-      printErr: (text: string) => postLog('warn', `[esmini] ${text}`),
-    });
-
-    postLog('info', 'esmini WASM runtime ready.');
-    postMsg({ type: 'READY' });
-  } catch (err: any) {
-    postError('Failed to initialize esmini WASM', err?.message || String(err));
-  }
+  return initPromise;
 }
 
 function parseDurationFromXosc(xoscContent: string | ArrayBuffer): number {
-  if (typeof xoscContent !== 'string') return 10.0;
-  // Match <SimulationTimeCondition value="10.0" ... />
-  const simTimeMatch = xoscContent.match(/SimulationTimeCondition[^>]*value=["']([\d\.]+)["']/i);
-  if (simTimeMatch && simTimeMatch[1]) {
-    const val = parseFloat(simTimeMatch[1]);
-    if (!isNaN(val) && val > 0) return val;
+  const xoscStr = typeof xoscContent === 'string'
+    ? xoscContent
+    : new TextDecoder().decode(xoscContent);
+
+  // 1. Check explicit StopTrigger with SimulationTimeCondition
+  const stopTriggerBlock = xoscStr.match(/<StopTrigger[\s\S]*?<\/StopTrigger>/i);
+  if (stopTriggerBlock) {
+    const stopMatch = stopTriggerBlock[0].match(/SimulationTimeCondition[^>]*value=["']([\d\.]+)["']/i);
+    if (stopMatch && stopMatch[1]) {
+      const val = parseFloat(stopMatch[1]);
+      if (!isNaN(val) && val > 0) return val;
+    }
   }
+
+  // 2. Fallback: Find maximum SimulationTimeCondition value across the scenario
+  const simTimeRegex = /SimulationTimeCondition[^>]*value=["']([\d\.]+)["']/gi;
+  let maxTime = 0;
+  let match: RegExpExecArray | null = null;
+  while ((match = simTimeRegex.exec(xoscStr)) !== null) {
+    const val = parseFloat(match[1]);
+    if (!isNaN(val) && val > maxTime) {
+      maxTime = val;
+    }
+  }
+
+  if (maxTime > 0) {
+    return maxTime;
+  }
+
   return 10.0;
 }
 
@@ -364,10 +404,14 @@ function parseScenarioMetadata(xoscContent: string | ArrayBuffer, xodrContent: s
   };
 }
 
-function loadScenario(payload: LoadScenarioPayload) {
+async function loadScenario(payload: LoadScenarioPayload) {
   if (!esminiModule) {
-    postError('esmini WASM module is not ready.');
-    return;
+    postLog('info', 'Dynamically initializing esmini WASM runtime for scenario load...');
+    const ok = await initEsmini();
+    if (!ok || !esminiModule) {
+      postError('esmini WASM module could not be initialized.');
+      return;
+    }
   }
 
   stopPlayback();
@@ -743,7 +787,17 @@ function setSpeed(speed: number) {
 }
 
 self.onmessage = (event: MessageEvent<MainToWorkerMessage>) => {
+  // Origin verification for worker message event handler
+  if (event.origin && self.location && event.origin !== self.location.origin) {
+    console.warn(`[simulation.worker] Ignored message from unauthorized origin: ${event.origin}`);
+    return;
+  }
+
   const msg = event.data;
+  if (!msg || typeof msg !== 'object' || typeof msg.type !== 'string') {
+    return;
+  }
+
   switch (msg.type) {
     case 'INIT':
       initEsmini();
