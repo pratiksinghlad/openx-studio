@@ -1,11 +1,13 @@
 import { defineConfig, searchForWorkspaceRoot } from 'vite';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 import viteCompression from 'vite-plugin-compression';
 
 export default defineConfig(({ command }) => ({
   base: process.env.VITE_BASE ?? (command === 'serve' ? '/' : '/openx-studio/'),
   plugins: [
     react(),
+    tailwindcss(),
     viteCompression({
       algorithm: 'brotliCompress',
       ext: '.br',
@@ -49,16 +51,16 @@ export default defineConfig(({ command }) => ({
     reportCompressedSize: false,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-radix': [
-            '@radix-ui/react-dialog',
-            '@radix-ui/react-scroll-area',
-            '@radix-ui/react-slider',
-            '@radix-ui/react-tabs',
-            '@radix-ui/react-tooltip',
-          ],
-          'vendor-three': ['three'],
-          'vendor-icons': ['lucide-react'],
+        manualChunks(id: string) {
+          if (id.includes('@radix-ui')) {
+            return 'vendor-radix';
+          }
+          if (id.includes('three')) {
+            return 'vendor-three';
+          }
+          if (id.includes('lucide-react')) {
+            return 'vendor-icons';
+          }
         },
       },
     },

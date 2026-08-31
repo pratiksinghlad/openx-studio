@@ -34,6 +34,7 @@ interface ScenarioInspectorProps {
   currentFrame: ScenarioFrame | null;
   scenarioName: string;
   onFocusEntity?: (entityId: number) => void;
+  onOpenAbout?: () => void;
 }
 
 export const ScenarioInspector: React.FC<ScenarioInspectorProps> = ({
@@ -43,6 +44,7 @@ export const ScenarioInspector: React.FC<ScenarioInspectorProps> = ({
   currentFrame,
   scenarioName,
   onFocusEntity,
+  onOpenAbout,
 }) => {
   const [paramSearch, setParamSearch] = useState('');
 
@@ -496,6 +498,32 @@ export const ScenarioInspector: React.FC<ScenarioInspectorProps> = ({
                   <p>
                     OpenX Studio UI and application code is open source under the <strong className="text-foreground">MIT License</strong>.
                   </p>
+                </CardContent>
+              </Card>
+
+              {/* About & Privacy Page Link */}
+              <Card className="p-3 border-primary/30 bg-primary/5">
+                <CardHeader className="p-0 pb-2">
+                  <CardTitle className="flex items-center gap-2 text-xs font-bold text-foreground">
+                    <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                    Privacy &amp; Architecture
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0 space-y-2 text-xs text-muted-foreground">
+                  <p>
+                    100% client-side processing. Your scenario files never leave your browser.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      onClose();
+                      onOpenAbout?.();
+                    }}
+                    className="w-full text-xs h-7 font-semibold"
+                  >
+                    View Full About &amp; Privacy
+                  </Button>
                 </CardContent>
               </Card>
             </TabsContent>
