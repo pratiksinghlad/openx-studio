@@ -15,6 +15,8 @@ import {
   Minus,
   Plus,
   RotateCw,
+  Video,
+  Download,
 } from 'lucide-react';
 import { CameraMode, CAMERA_MODES } from '../renderer/types';
 import { Slider } from './ui/slider';
@@ -49,6 +51,8 @@ export interface PlayerControlsProps {
   isFullscreen: boolean;
   zoomPercent: number;
   angleDeg: number;
+  isRecording?: boolean;
+  recordedDuration?: number;
   onPlay: () => void;
   onPause: () => void;
   onStop: () => void;
@@ -61,6 +65,7 @@ export interface PlayerControlsProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onAngleReset: () => void;
+  onToggleRecord?: () => void;
 }
 
 export function formatTime(seconds: number): string {
@@ -402,6 +407,62 @@ function ZoomAngleControls({
   );
 }
 
+interface VideoDownloadButtonProps {
+  isRecording?: boolean;
+  recordedDuration?: number;
+  onToggleRecord?: () => void;
+}
+
+function VideoDownloadButton({
+  isRecording = false,
+  recordedDuration = 0,
+  onToggleRecord,
+}: VideoDownloadButtonProps) {
+  if (!onToggleRecord) return null;
+
+  const tooltipText = isRecording
+    ? `Recording (${recordedDuration.toFixed(1)}s)... Click to Stop & Download MP4`
+    : 'Download Scenario as MP4 Video';
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant={isRecording ? 'destructive' : 'outline'}
+          size="sm"
+          onClick={onToggleRecord}
+          className={cn(
+            'gap-1.5 h-8.5 px-3 text-xs font-semibold rounded-lg active:scale-95 transition-all shadow-xs shrink-0 cursor-pointer',
+            isRecording
+              ? 'bg-red-600 hover:bg-red-500 text-white animate-pulse border-red-500 ring-2 ring-red-500/30'
+              : 'border-primary/40 bg-primary/5 hover:bg-primary/15 text-primary'
+          )}
+          aria-label={isRecording ? 'Stop Recording and Download Video' : 'Download Scenario MP4 Video'}
+        >
+          {isRecording ? (
+            <>
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+              </span>
+              <span className="font-mono text-xs font-bold">
+                {recordedDuration.toFixed(0)}s
+              </span>
+            </>
+          ) : (
+            <>
+              <Video className="h-3.5 w-3.5 text-primary shrink-0" />
+              <Download className="h-3 w-3 text-primary shrink-0 -ml-0.5" />
+              <span className="font-bold text-xs">MP4</span>
+            </>
+          )}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{tooltipText}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 interface FullscreenButtonProps {
   isFullscreen: boolean;
   onToggleFullscreen: () => void;
@@ -409,25 +470,53 @@ interface FullscreenButtonProps {
 
 function FullscreenButton({ isFullscreen, onToggleFullscreen }: FullscreenButtonProps) {
   return (
-    <div className="shrink-0 pl-1 border-l border-border/60">
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/80 active:scale-95 transition-all"
-            onClick={onToggleFullscreen}
-            aria-label="Toggle Fullscreen"
-          >
-            {isFullscreen ? (
-              <Minimize className="h-4 w-4" />
-            ) : (
-              <Maximize className="h-4 w-4" />
-            )}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}</TooltipContent>
-      </Tooltip>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8.5 w-8.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 active:scale-95 transition-all shrink-0 cursor-pointer"
+          onClick={onToggleFullscreen}
+          aria-label="Toggle Fullscreen"
+        >
+          {isFullscreen ? (
+            <Minimize className="h-4 w-4" />
+          ) : (
+            <Maximize className="h-4 w-4" />
+          )}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+interface ActionButtonsClusterProps {
+  isRecording?: boolean;
+  recordedDuration?: number;
+  isFullscreen: boolean;
+  onToggleRecord?: () => void;
+  onToggleFullscreen: () => void;
+}
+
+function ActionButtonsCluster({
+  isRecording,
+  recordedDuration,
+  isFullscreen,
+  onToggleRecord,
+  onToggleFullscreen,
+}: ActionButtonsClusterProps) {
+  return (
+    <div className="flex items-center gap-1.5 pl-2 border-l border-border/70 shrink-0">
+      <VideoDownloadButton
+        isRecording={isRecording}
+        recordedDuration={recordedDuration}
+        onToggleRecord={onToggleRecord}
+      />
+      <FullscreenButton
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={onToggleFullscreen}
+      />
     </div>
   );
 }
@@ -444,6 +533,8 @@ export const PlayerControls: React.FC<PlayerControlsProps> = (props) => {
     isFullscreen,
     zoomPercent,
     angleDeg,
+    isRecording,
+    recordedDuration,
     onPlay,
     onPause,
     onStop,
@@ -456,6 +547,7 @@ export const PlayerControls: React.FC<PlayerControlsProps> = (props) => {
     onZoomIn,
     onZoomOut,
     onAngleReset,
+    onToggleRecord,
   } = props;
 
   if (!isLoaded) return null;
@@ -468,7 +560,7 @@ export const PlayerControls: React.FC<PlayerControlsProps> = (props) => {
   return (
     <TooltipProvider delayDuration={200}>
       <div className="absolute bottom-5 left-0 w-full flex justify-center pointer-events-none z-30 px-3 sm:px-4 group/dock">
-        <div className="pointer-events-auto flex flex-col gap-1.5 bg-card/92 dark:bg-card/85 backdrop-blur-2xl border border-border/80 hover:border-primary/50 p-2 sm:p-2.5 px-3.5 sm:px-4 rounded-2xl shadow-xl hover:shadow-2xl w-[min(98%,960px)] min-w-0 transition-all duration-300 ease-out transform-gpu scale-95 opacity-90 hover:scale-100 hover:opacity-100">
+        <div className="pointer-events-auto flex flex-col gap-2 bg-card/95 dark:bg-card/90 backdrop-blur-2xl border border-border/80 hover:border-primary/50 p-2.5 sm:p-3 px-4 sm:px-5 rounded-2xl shadow-xl hover:shadow-2xl w-[min(98%,1260px)] min-w-0 transition-all duration-300 ease-out transform-gpu scale-95 opacity-90 hover:scale-100 hover:opacity-100">
           {/* Top Row: Full-width Timeline Scrubber Line */}
           <TimelineTrack
             effectiveValue={effectiveValue}
@@ -477,9 +569,9 @@ export const PlayerControls: React.FC<PlayerControlsProps> = (props) => {
           />
 
           {/* Bottom Row: Controls & Time on Left, View & Tools on Right */}
-          <div className="flex items-center justify-between gap-2 sm:gap-3 w-full flex-nowrap min-w-0">
+          <div className="flex items-center justify-between gap-3 w-full flex-nowrap min-w-0">
             {/* Left: Playback buttons & Clear Time Display */}
-            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
               <PlaybackButtonGroup
                 isPlaying={isPlaying}
                 isCompleted={isCompleted}
@@ -496,8 +588,8 @@ export const PlayerControls: React.FC<PlayerControlsProps> = (props) => {
               />
             </div>
 
-            {/* Right: Speeds, Camera View Modes, Zoom, Fullscreen */}
-            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
+            {/* Right: Speeds, Camera View Modes, Zoom, MP4 Video Download, Fullscreen */}
+            <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 ml-auto">
               <SpeedSelector speed={speed} onSpeedChange={onSpeedChange} />
 
               <CameraControls
@@ -515,8 +607,11 @@ export const PlayerControls: React.FC<PlayerControlsProps> = (props) => {
                 />
               )}
 
-              <FullscreenButton
+              <ActionButtonsCluster
+                isRecording={isRecording}
+                recordedDuration={recordedDuration}
                 isFullscreen={isFullscreen}
+                onToggleRecord={onToggleRecord}
                 onToggleFullscreen={onToggleFullscreen}
               />
             </div>

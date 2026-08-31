@@ -984,6 +984,10 @@ export class ScenarioRenderer {
     }
   }
 
+  public getCanvas(): HTMLCanvasElement {
+    return this.renderer.domElement;
+  }
+
   public handleResize() {
     if (!this.container || this.isDestroyed) return;
     const width = this.container.clientWidth;
