@@ -1,0 +1,463 @@
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { SimulationWorkerClient } from './worker/workerClient';
+import { ScenarioRoadGeometry, ScenarioFrame, ScenarioMetadata } from './types/simulation';
+import { FilePayload } from './types/protocol';
+import { CameraMode, ViewTheme, CAMERA_MODES, VIEW_THEMES } from './renderer/ScenarioRenderer';
+import { FileUploader } from './components/FileUploader';
+import { ScenarioViewport, ScenarioViewportHandle, ViewportState } from './components/ScenarioViewport';
+import { PlayerControls } from './components/PlayerControls';
+import { ScenarioInspector } from './components/ScenarioInspector';
+import { ErrorBanner } from './components/ErrorBanner';
+import { Button } from './components/ui/button';
+import { Badge } from './components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from './components/ui/dialog';
+import {
+  Car,
+  FolderOpen,
+  Layers,
+  Sparkles,
+  Sun,
+  Moon,
+  Info,
+} from 'lucide-react';
+import { cn } from './lib/utils';
+
+export function App() {
+  const [workerClient, setWorkerClient] = useState<SimulationWorkerClient | null>(null);
+  const [isWorkerReady, setIsWorkerReady] = useState(false);
+  const [isLoadingScenario, setIsLoadingScenario] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [simulationTime, setSimulationTime] = useState(0);
+  const [duration, setDuration] = useState(10.0);
+  const [speed, setSpeed] = useState(1.0);
+  const [cameraMode, setCameraMode] = useState<CameraMode>(CAMERA_MODES.ORBIT);
+  const [cameraResetTrigger, setCameraResetTrigger] = useState(0);
+  const [theme, setTheme] = useState<ViewTheme>(VIEW_THEMES.LIGHT);
+  const [statusText, setStatusText] = useState('Initializing WASM...');
+  const [scenarioName, setScenarioName] = useState<string>('');
+  const [roadGeometry, setRoadGeometry] = useState<ScenarioRoadGeometry | null>(null);
+  const [currentFrame, setCurrentFrame] = useState<ScenarioFrame | null>(null);
+  const [scenarioMetadata, setScenarioMetadata] = useState<ScenarioMetadata | null>(null);
+  const [showInspector, setShowInspector] = useState(false);
+  const [selectedEntityId, setSelectedEntityId] = useState<number | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [zoomPercent, setZoomPercent] = useState(100);
+  const [angleDeg, setAngleDeg] = useState(0);
+
+  const playerContainerRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<ScenarioViewportHandle>(null);
+
+  // Apply theme to document element
+  useEffect(() => {
+    const isDark = theme === VIEW_THEMES.DARK;
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
+
+  // Initialize Worker Client
+  useEffect(() => {
+    const client = new SimulationWorkerClient();
+    setWorkerClient(client);
+
+    const unsubReady = client.onReady(() => {
+      setIsWorkerReady(true);
+      setStatusText('Ready');
+    });
+
+    const unsubLoaded = client.onScenarioLoaded((geometry, initialFrame, _objectCount, initialDuration, metadata) => {
+      setIsLoadingScenario(false);
+      setIsLoaded(true);
+      setIsPlaying(false);
+      setIsCompleted(false);
+      setRoadGeometry(geometry);
+      setCurrentFrame(initialFrame);
+      setScenarioMetadata(metadata || null);
+      setSimulationTime(initialFrame.simulation_time);
+      setDuration(initialDuration || 10.0);
+      setStatusText('Ready');
+      setShowUploadModal(false);
+    });
+
+    const unsubFrame = client.onFrame((frame, time, curDuration, completed) => {
+      setCurrentFrame(frame);
+      setSimulationTime(time);
+      if (curDuration > 0) {
+        setDuration(curDuration);
+      }
+      setIsCompleted(completed);
+      if (completed) {
+        setIsPlaying(false);
+        setStatusText('Completed');
+      }
+    });
+
+    const unsubPlayback = client.onPlaybackState((playing, time, curDuration, completed, curSpeed) => {
+      setIsPlaying(playing);
+      setSimulationTime(time);
+      if (curDuration > 0) {
+        setDuration(curDuration);
+      }
+      setIsCompleted(completed);
+      setSpeed(curSpeed);
+      if (playing) {
+        setStatusText('Playing');
+      } else if (completed) {
+        setStatusText('Completed');
+      } else {
+        setStatusText('Paused');
+      }
+    });
+
+    const unsubError = client.onError((message, details) => {
+      setIsLoadingScenario(false);
+      setIsPlaying(false);
+      setErrorMessage(message);
+      setErrorDetails(details || null);
+      setStatusText('Error');
+    });
+
+    return () => {
+      unsubReady();
+      unsubLoaded();
+      unsubFrame();
+      unsubPlayback();
+      unsubError();
+      client.terminate();
+    };
+  }, []);
+
+  // Listen for fullscreen change events
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  const handleScenarioReady = useCallback(
+    (xosc: FilePayload, xodr: FilePayload, extraFiles?: FilePayload[]) => {
+      if (!workerClient) return;
+
+      setIsLoadingScenario(true);
+      setErrorMessage(null);
+      setErrorDetails(null);
+      setScenarioName(xosc.name.replace(/\.xosc$/i, ''));
+      setStatusText('Loading OpenSCENARIO...');
+
+      workerClient.loadScenario({
+        xoscFile: xosc,
+        xodrFile: xodr,
+        extraFiles,
+      });
+    },
+    [workerClient]
+  );
+
+  const handlePlay = useCallback(() => {
+    if (workerClient && isLoaded) {
+      workerClient.play();
+    }
+  }, [workerClient, isLoaded]);
+
+  const handlePause = useCallback(() => {
+    if (workerClient && isLoaded) {
+      workerClient.pause();
+    }
+  }, [workerClient, isLoaded]);
+
+  const handleStop = useCallback(() => {
+    if (workerClient && isLoaded) {
+      workerClient.stop();
+      setIsPlaying(false);
+      setStatusText('Stopped');
+    }
+  }, [workerClient, isLoaded]);
+
+  const handleStepForward = useCallback(() => {
+    if (workerClient && isLoaded) {
+      workerClient.stepForward();
+    }
+  }, [workerClient, isLoaded]);
+
+  const handleStepBackward = useCallback(() => {
+    if (workerClient && isLoaded) {
+      workerClient.stepBackward();
+    }
+  }, [workerClient, isLoaded]);
+
+  const handleSeek = useCallback(
+    (time: number) => {
+      if (workerClient && isLoaded) {
+        workerClient.seek(time);
+      }
+    },
+    [workerClient, isLoaded]
+  );
+
+  const handleSpeedChange = useCallback(
+    (newSpeed: number) => {
+      if (workerClient && isLoaded) {
+        workerClient.setSpeed(newSpeed);
+        setSpeed(newSpeed);
+      }
+    },
+    [workerClient, isLoaded]
+  );
+
+  const handleCameraModeChange = useCallback((mode: CameraMode) => {
+    setCameraMode(mode);
+    if (mode === CAMERA_MODES.ORBIT) {
+      setCameraResetTrigger((prev) => prev + 1);
+    }
+  }, []);
+
+  const handleToggleTheme = useCallback(() => {
+    setTheme((prev) => (prev === VIEW_THEMES.LIGHT ? VIEW_THEMES.DARK : VIEW_THEMES.LIGHT));
+  }, []);
+
+  const handleToggleFullscreen = useCallback(() => {
+    if (!playerContainerRef.current) return;
+
+    if (!document.fullscreenElement) {
+      playerContainerRef.current.requestFullscreen().catch((err) => {
+        console.error('Fullscreen request failed:', err);
+      });
+    } else {
+      document.exitFullscreen().catch((err) => {
+        console.error('Exit fullscreen failed:', err);
+      });
+    }
+  }, []);
+
+  const handleViewportState = useCallback((state: ViewportState) => {
+    setZoomPercent(state.zoomPercent);
+    setAngleDeg(state.angleDeg);
+  }, []);
+
+  const handleZoomIn = useCallback(() => {
+    viewportRef.current?.zoomIn();
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    viewportRef.current?.zoomOut();
+  }, []);
+
+  const handleAngleReset = useCallback(() => {
+    viewportRef.current?.resetAngle();
+  }, []);
+
+  return (
+    <div className="flex flex-col h-screen w-screen bg-background text-foreground overflow-hidden">
+      {/* Top Navbar */}
+      {!isFullscreen && (
+        <header className="h-16 min-h-16 bg-card/95 backdrop-blur-md border-b border-border flex items-center justify-between px-5 z-30 shrink-0 shadow-sm">
+          {/* Brand Logo & Title */}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center text-white shadow-md shadow-blue-500/25 shrink-0">
+              <Car className="h-5 w-5" />
+            </div>
+            <div className="flex flex-col">
+              <h1 className="text-base font-bold tracking-tight text-foreground leading-tight">
+                OpenX Studio
+              </h1>
+              <span className="text-xs font-medium text-muted-foreground tracking-wide">
+                OpenSCENARIO & OpenDRIVE
+              </span>
+            </div>
+          </div>
+
+          {/* Scenario Badge or Engine Status */}
+          <div className="flex items-center justify-center">
+            {scenarioName ? (
+              <Badge
+                variant="outline"
+                className="gap-2 py-1.5 px-4 bg-primary/10 border-primary/30 text-primary font-bold text-sm max-w-[min(45vw,420px)] truncate shadow-xs"
+                title={`Loaded Scenario: ${scenarioName}`}
+              >
+                <Layers className="h-4 w-4 shrink-0" />
+                <span className="truncate">{scenarioName}</span>
+              </Badge>
+            ) : (
+              <Badge
+                variant="outline"
+                className="gap-2 py-1.5 px-4 text-sm text-muted-foreground bg-muted/40 font-medium"
+              >
+                <Sparkles
+                  className={cn(
+                    'h-4 w-4 shrink-0',
+                    isWorkerReady ? 'text-emerald-500' : 'text-amber-500 animate-spin'
+                  )}
+                />
+                <span>
+                  {isWorkerReady ? 'esmini WASM Engine Ready' : 'Initializing WASM Engine...'}
+                </span>
+              </Badge>
+            )}
+          </div>
+
+          {/* Header Action Buttons */}
+          <div className="flex items-center gap-2.5">
+            {isLoaded && (
+              <Button
+                variant={showInspector ? 'default' : 'outline'}
+                size="default"
+                onClick={() => setShowInspector((prev) => !prev)}
+                className="gap-2 h-9 px-3.5 text-sm font-semibold shadow-xs"
+                aria-label="Toggle Scenario Inspector"
+              >
+                <Info className="h-4 w-4" />
+                <span>Scenario Info</span>
+              </Button>
+            )}
+
+            <Button
+              variant="outline"
+              size="default"
+              onClick={handleToggleTheme}
+              className="h-9 w-9 p-0 text-foreground shadow-xs"
+              title={theme === VIEW_THEMES.LIGHT ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+              aria-label="Toggle Theme"
+            >
+              {theme === VIEW_THEMES.LIGHT ? (
+                <Moon className="h-4.5 w-4.5" />
+              ) : (
+                <Sun className="h-4.5 w-4.5" />
+              )}
+            </Button>
+
+            {isLoaded && (
+              <Button
+                variant="outline"
+                size="default"
+                onClick={() => setShowUploadModal(true)}
+                className="gap-2 h-9 px-3.5 text-sm font-semibold shadow-xs"
+                title="Upload another scenario"
+              >
+                <FolderOpen className="h-4 w-4" />
+                <span>Change Scenario</span>
+              </Button>
+            )}
+          </div>
+        </header>
+      )}
+
+      {/* Main Viewport Container */}
+      <main
+        className="relative flex-1 w-full h-full overflow-hidden bg-background"
+        ref={playerContainerRef}
+      >
+        {errorMessage && (
+          <ErrorBanner
+            message={errorMessage}
+            details={errorDetails || undefined}
+            onDismiss={() => setErrorMessage(null)}
+          />
+        )}
+
+        {/* 3D Simulation Viewport */}
+        <ScenarioViewport
+          ref={viewportRef}
+          roadGeometry={roadGeometry}
+          currentFrame={currentFrame}
+          cameraMode={cameraMode}
+          cameraResetTrigger={cameraResetTrigger}
+          theme={theme}
+          isLoaded={isLoaded}
+          statusText={statusText}
+          onOpenInspector={() => setShowInspector(true)}
+          onFocusEntity={(id) => setSelectedEntityId(id)}
+          selectedEntityId={selectedEntityId}
+          onViewportState={handleViewportState}
+        />
+
+        {/* Scenario & Road Inspector Sheet */}
+        <ScenarioInspector
+          isOpen={showInspector}
+          onClose={() => setShowInspector(false)}
+          metadata={scenarioMetadata}
+          currentFrame={currentFrame}
+          scenarioName={scenarioName}
+          onFocusEntity={(id) => setSelectedEntityId(id)}
+        />
+
+        {/* Scenario Upload Dialog (Modal when loaded, or fullscreen on initial state) */}
+        {!isLoaded ? (
+          <div className="absolute inset-0 z-30 flex items-center justify-center p-4 bg-background">
+            <div className="w-[min(94%,680px)] p-6 bg-card border border-border/70 rounded-2xl shadow-2xl animate-in fade-in-0 duration-200">
+              <div className="mb-5 flex flex-col gap-1 text-center sm:text-left">
+                <h2 className="text-xl font-bold tracking-tight text-foreground">
+                  Load OpenSCENARIO Scenario
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Select or drag .xosc and .xodr files to start interactive 3D simulation playback.
+                </p>
+              </div>
+              <FileUploader
+                onScenarioReady={handleScenarioReady}
+                isLoading={isLoadingScenario}
+              />
+            </div>
+          </div>
+        ) : (
+          <Dialog open={showUploadModal} onOpenChange={setShowUploadModal}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Load OpenSCENARIO Scenario</DialogTitle>
+              </DialogHeader>
+              <FileUploader
+                onScenarioReady={handleScenarioReady}
+                isLoading={isLoadingScenario}
+              />
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Minimal Unobtrusive Player Controls Dock */}
+        <PlayerControls
+          isPlaying={isPlaying}
+          isLoaded={isLoaded}
+          isCompleted={isCompleted}
+          simulationTime={simulationTime}
+          duration={duration}
+          speed={speed}
+          cameraMode={cameraMode}
+          isFullscreen={isFullscreen}
+          zoomPercent={zoomPercent}
+          angleDeg={angleDeg}
+          onPlay={handlePlay}
+          onPause={handlePause}
+          onStop={handleStop}
+          onStepForward={handleStepForward}
+          onStepBackward={handleStepBackward}
+          onSeek={handleSeek}
+          onSpeedChange={handleSpeedChange}
+          onCameraModeChange={handleCameraModeChange}
+          onToggleFullscreen={handleToggleFullscreen}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onAngleReset={handleAngleReset}
+        />
+      </main>
+    </div>
+  );
+}
+
+export default App;

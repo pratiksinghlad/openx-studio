@@ -1,0 +1,44 @@
+OpenX Studio
+Copyright (c) 2026 OpenX Studio Contributors
+
+========================================================================
+1. Trademark Notices and Disclaimers (ASAM e.V.)
+========================================================================
+ASAM®, ASAM OpenDRIVE®, ASAM OpenSCENARIO®, ASAM OpenCRG®, ASAM OpenODD®,
+ASAM OpenLABEL®, and ASAM OpenX® are registered trademarks of ASAM e.V.
+(Association for Standardisation of Automation and Measuring Systems).
+For more information, visit https://www.asam.net.
+
+OpenX Studio is an independent open-source project and is NOT officially
+affiliated with, endorsed by, sponsored by, or certified by ASAM e.V.
+The use of standard names (OpenDRIVE, OpenSCENARIO, OpenX) is for technical
+identification and file compatibility purposes only.
+
+========================================================================
+2. Simulation Engine (esmini) - Mozilla Public License 2.0 (MPL-2.0)
+========================================================================
+The simulation playback capability in OpenX Studio utilizes 'esmini',
+an OpenSCENARIO player developed by Emil Knabe and open-source contributors:
+https://github.com/esmini/esmini
+
+esmini is licensed under the Mozilla Public License, Version 2.0 (MPL-2.0).
+Copyright (c) Emil Knabe and esmini contributors.
+
+In compliance with MPL-2.0:
+- The compiled WebAssembly simulation module (esmini.js / WASM) and C++
+  runtime wrappers remain subject to the terms of the MPL-2.0.
+- Source code for esmini can be obtained at:
+  https://github.com/esmini/esmini
+- You may obtain a copy of the Mozilla Public License 2.0 at:
+  https://www.mozilla.org/MPL/2.0/
+
+========================================================================
+3. Frontend and Application Frameworks
+========================================================================
+This software includes components from the following open source projects:
+- React (MIT License) - Copyright (c) Meta Platforms, Inc. and affiliates.
+- Three.js (MIT License) - Copyright (c) 2010-2026 Three.js Authors.
+- Radix UI (MIT License) - Copyright (c) 2022 WorkOS.
+- Lucide Icons (ISC License) - Copyright (c) Lucide Contributors.
+- Tailwind CSS (MIT License) - Copyright (c) Tailwind Labs, Inc.
+- Vite (MIT License) - Copyright (c) 2019-present Yuxi (Evan) You & Vite Contributors.
