@@ -2,13 +2,185 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%233b82f6'/%3E%3Cstop offset='100%25' stop-color='%232563eb'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Cpath d='M20 44 L32 20 L44 44' stroke='white' stroke-width='5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3Ccircle cx='32' cy='32' r='4' fill='%2360a5fa'/%3E%3C/svg%3E" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="OpenX Studio — In-browser Scenario Player, Visual Editor, and Simulator for ASAM OpenSCENARIO and OpenDRIVE." />
-    <title>OpenX Studio — ASAM OpenSCENARIO & OpenDRIVE Studio</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    
+    <!-- Primary SEO Metadata -->
+    <title>OpenX Studio — In-Browser ASAM OpenSCENARIO &amp; OpenDRIVE Simulator</title>
+    <meta name="title" content="OpenX Studio — In-Browser ASAM OpenSCENARIO &amp; OpenDRIVE Simulator" />
+    <meta name="description" content="OpenX Studio is a high-performance in-browser scenario player, visual editor, and 3D simulator for ASAM OpenSCENARIO (.xosc) and OpenDRIVE (.xodr), powered by esmini WebAssembly, Three.js, and Web Workers." />
+    <meta name="keywords" content="OpenSCENARIO, OpenDRIVE, ASAM, esmini, autonomous driving, ADAS simulation, 3D scenario player, xosc, xodr, WebAssembly, Three.js, automotive simulation, vehicle dynamics, road network viewer" />
+    <meta name="author" content="OpenX Studio Team" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <link rel="canonical" href="https://pratiksinghlad.github.io/openx-studio/" />
+
+    <!-- Web App & Theme -->
+    <meta name="application-name" content="OpenX Studio" />
+    <meta name="apple-mobile-web-app-title" content="OpenX Studio" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="color-scheme" content="dark light" />
+    <link rel="manifest" href="./site.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+    <link rel="apple-touch-icon" href="./icon.svg" />
+
+    <!-- LLM Agent & Machine-Readable Discovery -->
+    <link rel="help" type="text/markdown" href="./llms.txt" title="LLM Agent Context (llms.txt)" />
+    <link rel="alternate" type="text/plain" href="./llms-full.txt" title="Full Technical Documentation for LLMs" />
+    <link rel="sitemap" type="application/xml" href="./sitemap.xml" title="XML Sitemap" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://pratiksinghlad.github.io/openx-studio/" />
+    <meta property="og:site_name" content="OpenX Studio" />
+    <meta property="og:title" content="OpenX Studio — In-Browser ASAM OpenSCENARIO &amp; OpenDRIVE Simulator" />
+    <meta property="og:description" content="Zero-install, high-fidelity 3D autonomous vehicle scenario playback and road network simulator powered by WebAssembly, Three.js, and Web Workers." />
+    <meta property="og:image:type" content="image/svg+xml" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="OpenX Studio — In-Browser ASAM OpenSCENARIO &amp; OpenDRIVE Simulator Preview" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://pratiksinghlad.github.io/openx-studio/" />
+    <meta name="twitter:title" content="OpenX Studio — In-Browser ASAM OpenSCENARIO &amp; OpenDRIVE Simulator" />
+    <meta name="twitter:description" content="Zero-install, high-fidelity 3D autonomous vehicle scenario playback and road network simulator powered by WebAssembly, Three.js, and Web Workers." />
+    <meta name="twitter:image:alt" content="OpenX Studio 3D Scenario Simulator Preview" />
+
+    <!-- Schema.org JSON-LD Structured Data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebApplication",
+            "@id": "https://pratiksinghlad.github.io/openx-studio/#webapp",
+            "name": "OpenX Studio",
+            "url": "https://pratiksinghlad.github.io/openx-studio/",
+            "applicationCategory": "DeveloperApplication",
+            "operatingSystem": "Web Browser (Chrome, Firefox, Safari, Edge)",
+            "browserRequirements": "Requires WebGL and WebAssembly support",
+            "description": "High-performance in-browser scenario player, visual editor, and 3D simulator for ASAM OpenSCENARIO (.xosc) and OpenDRIVE (.xodr).",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            },
+            "featureList": [
+              "In-browser ASAM OpenSCENARIO 1.x simulation execution via WebAssembly",
+              "ASAM OpenDRIVE 1.4-1.7 road network parsing and 3D mesh tessellation",
+              "Off-main-thread Web Worker physics execution at 60+ FPS",
+              "Interactive 3D Viewport with Orbit, Ego Follow, and Top-Down Bird's-Eye cameras",
+              "Full timeline scrubbing and frame-cached backward stepping",
+              "Dual XML dropzone with schema and root tag validation",
+              "Live entity telemetry and dynamic parameter inspection"
+            ],
+            "license": "https://opensource.org/licenses/MIT"
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://pratiksinghlad.github.io/openx-studio/#website",
+            "url": "https://pratiksinghlad.github.io/openx-studio/",
+            "name": "OpenX Studio",
+            "description": "In-browser ASAM OpenSCENARIO and OpenDRIVE Simulator & Scenario Player",
+            "inLanguage": "en-US"
+          },
+          {
+            "@type": "FAQPage",
+            "@id": "https://pratiksinghlad.github.io/openx-studio/#faq",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "What is OpenX Studio?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "OpenX Studio is a web-based scenario player, editor, and 3D simulator for automotive engineers working with ASAM OpenSCENARIO and OpenDRIVE standards."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Does OpenX Studio require installation or a backend server?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. OpenX Studio runs entirely client-side in your web browser using WebAssembly (WASM) and Web Workers. Your scenario and road files remain private on your computer."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Which ASAM standards are supported?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "OpenX Studio supports ASAM OpenSCENARIO (v1.0, v1.1, v1.2) and ASAM OpenDRIVE (v1.4, v1.5, v1.6, v1.7)."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    </script>
+
+    <!-- Theme Initialization -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('openx_studio_theme_preference');
+          var isDark = stored === 'dark' || (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (isDark) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.setAttribute('data-theme', 'light');
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (_) {}
+      })();
+    </script>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <!-- Main Application Mounting Point with SEO & LLM Fallback Content -->
+    <div id="root">
+      <header style="padding: 1rem; border-bottom: 1px solid #334155;">
+        <h1>OpenX Studio — ASAM OpenSCENARIO &amp; OpenDRIVE Simulator</h1>
+        <p>In-browser scenario player, visual editor, and 3D simulator for autonomous driving scenarios.</p>
+      </header>
+      <main style="padding: 1rem;">
+        <section>
+          <h2>Features &amp; Capabilities</h2>
+          <ul>
+            <li><strong>Zero Install</strong>: Full esmini C++ simulation engine running in WebAssembly (WASM).</li>
+            <li><strong>Standards Compliance</strong>: Supports ASAM OpenSCENARIO (.xosc) and OpenDRIVE (.xodr).</li>
+            <li><strong>High-Performance 3D</strong>: Three.js viewport with Orbit, Follow Ego, and Top-Down camera perspectives.</li>
+            <li><strong>Web Worker Concurrency</strong>: Off-main-thread stepping for smooth 60+ FPS UI responsiveness.</li>
+            <li><strong>Inspector &amp; Telemetry</strong>: Real-time speed (km/h, m/s), coordinates, vehicle parameters, and storyboards.</li>
+          </ul>
+        </section>
+        <section>
+          <h2>Machine-Readable Documentation</h2>
+          <p>For AI crawlers and LLM agents: read <a href="./llms.txt">llms.txt</a> or <a href="./llms-full.txt">llms-full.txt</a>.</p>
+        </section>
+      </main>
+    </div>
+
+    <!-- Noscript Fallback for Search Crawlers without JS -->
+    <noscript>
+      <div style="padding: 2rem; max-width: 800px; margin: 0 auto; font-family: sans-serif; line-height: 1.6;">
+        <h1>OpenX Studio — In-Browser ASAM OpenSCENARIO &amp; OpenDRIVE Simulator</h1>
+        <p>
+          OpenX Studio provides automotive engineers and autonomous vehicle researchers with a client-side 3D simulation
+          environment for ASAM OpenSCENARIO (.xosc) and OpenDRIVE (.xodr).
+        </p>
+        <h2>JavaScript Required</h2>
+        <p>
+          JavaScript is required to run the WebAssembly simulation engine and WebGL 3D viewport. Please enable JavaScript in your browser.
+        </p>
+        <p>
+          For automated scraping and LLM agents, explore <a href="./llms.txt">/llms.txt</a> and <a href="./llms-full.txt">/llms-full.txt</a>.
+        </p>
+      </div>
+    </noscript>
+
+    <script type="module" src="./src/main.tsx"></script>
   </body>
 </html>

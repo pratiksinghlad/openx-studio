@@ -41,21 +41,29 @@ export class SimulationWorkerClient {
       );
 
       this.worker.onmessage = (event: MessageEvent<WorkerToMainMessage>) => {
+        if (event.origin && window.location && event.origin !== window.location.origin) {
+          console.warn(`[workerClient] Ignored message from unauthorized origin: ${event.origin}`);
+          return;
+        }
         this.handleWorkerMessage(event.data);
       };
 
       this.worker.onerror = (err) => {
         this.notifyError('Worker error', err.message);
       };
-
-      // Send INIT
-      this.postMessage({ type: 'INIT' });
     } catch (err: any) {
       this.notifyError('Failed to initialize worker', err?.message || String(err));
     }
   }
 
+  public init() {
+    this.postMessage({ type: 'INIT' });
+  }
+
   private handleWorkerMessage(msg: WorkerToMainMessage) {
+    if (!msg || typeof msg !== 'object' || typeof msg.type !== 'string') {
+      return;
+    }
     switch (msg.type) {
       case 'READY':
         this.isReady = true;

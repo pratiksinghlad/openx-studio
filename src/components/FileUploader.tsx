@@ -32,27 +32,27 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onScenarioReady, isL
       const name = file.name.toLowerCase();
       const content = await file.text();
 
-      // Validate XML structure
+      // Validate XML structure safely without reinterpreting DOM nodes as HTML
       const parser = new DOMParser();
       const xmlDoc = parser.parseFromString(content, 'application/xml');
       const parseError = xmlDoc.querySelector('parsererror');
 
       if (parseError) {
-        setErrorMessage(`Invalid XML in "${file.name}": ${parseError.textContent?.slice(0, 100)}`);
+        setErrorMessage(`Invalid XML structure in "${file.name}". Please ensure the file is a well-formed XML document.`);
         return;
       }
 
       if (name.endsWith('.xosc')) {
-        const rootTag = xmlDoc.documentElement.tagName;
+        const rootTag = xmlDoc.documentElement?.tagName;
         if (rootTag !== 'OpenSCENARIO') {
-          setErrorMessage(`File "${file.name}" has .xosc extension but root tag is <${rootTag}> instead of <OpenSCENARIO>.`);
+          setErrorMessage(`File "${file.name}" has .xosc extension but is missing the expected <OpenSCENARIO> root element.`);
           return;
         }
         newXosc = { name: file.name, content };
       } else if (name.endsWith('.xodr')) {
-        const rootTag = xmlDoc.documentElement.tagName;
+        const rootTag = xmlDoc.documentElement?.tagName;
         if (rootTag !== 'OpenDRIVE') {
-          setErrorMessage(`File "${file.name}" has .xodr extension but root tag is <${rootTag}> instead of <OpenDRIVE>.`);
+          setErrorMessage(`File "${file.name}" has .xodr extension but is missing the expected <OpenDRIVE> root element.`);
           return;
         }
         newXodr = { name: file.name, content };
@@ -101,10 +101,14 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onScenarioReady, isL
       setErrorMessage(null);
       setValidationWarning(null);
 
+      const baseUrl = import.meta.env.BASE_URL.endsWith('/')
+        ? import.meta.env.BASE_URL
+        : `${import.meta.env.BASE_URL}/`;
+
       const [xoscRes, xodrRes, catRes] = await Promise.all([
-        fetch('/samples/example.xosc'),
-        fetch('/samples/example.xodr'),
-        fetch('/samples/catalogs/VehicleCatalog.xosc'),
+        fetch(`${baseUrl}samples/example.xosc`),
+        fetch(`${baseUrl}samples/example.xodr`),
+        fetch(`${baseUrl}samples/catalogs/VehicleCatalog.xosc`),
       ]);
 
       if (!xoscRes.ok || !xodrRes.ok) {

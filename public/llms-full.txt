@@ -1,0 +1,242 @@
+# OpenX Studio — Full Technical & Architecture Reference for AI & LLM Agents
+
+## 1. System Overview & Purpose
+
+OpenX Studio (openx-studio) is a high-performance web application designed for autonomous vehicle (AV), Advanced Driver Assistance Systems (ADAS), and automotive simulation engineers. It brings the standard automotive simulation pipeline directly to the web browser with zero installation.
+
+Live URL: https://pratiksinghlad.github.io/openx-studio/
+
+Key Highlights:
+- Executes standard ASAM OpenSCENARIO (.xosc) dynamic scenario descriptions and ASAM OpenDRIVE (.xodr) road network descriptions in real-time.
+- Utilizes the esmini C++ simulation core compiled to WebAssembly (WASM).
+- Offloads simulation calculation and road triangulation to Web Workers to ensure constant 60+ frames-per-second UI and Three.js 3D rendering.
+- Provides interactive timeline scrubbing with past-frame caching for instant step-back operations.
+- Full camera subsystem supporting Orbit, Ego-Vehicle Following (chase camera), and 2D/3D Top-Down Bird's-Eye view.
+
+---
+
+## 2. Supported Standards & File Formats
+
+### 2.1 ASAM OpenSCENARIO (.xosc)
+- Version Support: 1.0, 1.1, 1.2
+- Root Element: `<OpenSCENARIO>`
+- Description: Defines maneuvers, storyboards, triggers, conditions, speed profiles, lane changes, catalog references, and parameter declarations.
+- XML Structure Example:
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenSCENARIO>
+  <FileHeader revMajor="1" revMinor="0" date="2026-01-01T00:00:00" description="Cut-In Scenario" author="OpenX Studio"/>
+  <ParameterDeclarations>
+    <ParameterDeclaration name="EgoSpeed" parameterType="double" value="25.0"/>
+    <ParameterDeclaration name="TargetSpeed" parameterType="double" value="20.0"/>
+  </ParameterDeclarations>
+  <CatalogLocations>
+    <VehicleCatalog>
+      <Directory path="catalogs"/>
+    </VehicleCatalog>
+  </CatalogLocations>
+  <RoadNetwork>
+    <LogicFile filepath="example.xodr"/>
+  </RoadNetwork>
+  <Entities>
+    <ScenarioObject name="Ego">
+      <Vehicle name="car_white" vehicleCategory="car">
+        <BoundingBox>
+          <Center x="1.4" y="0.0" z="0.75"/>
+          <Dimensions width="1.9" length="4.5" height="1.5"/>
+        </BoundingBox>
+        <Performance maxSpeed="69.4" maxAcceleration="6.0" maxDeceleration="8.0"/>
+        <Axles>
+          <FrontAxle maxSteering="0.5" wheelDiameter="0.6" trackWidth="1.6" positionX="2.8" positionZ="0.3"/>
+          <RearAxle maxSteering="0.0" wheelDiameter="0.6" trackWidth="1.6" positionX="0.0" positionZ="0.3"/>
+        </Axles>
+      </Vehicle>
+    </ScenarioObject>
+  </Entities>
+  <Storyboard>
+    <Init>
+      <Actions>
+        <Private entityRef="Ego">
+          <PrivateAction>
+            <LongitudinalAction>
+              <SpeedAction>
+                <SpeedActionDynamics dynamicsShape="step" value="0.0" dynamicsDimension="time"/>
+                <SpeedActionTarget>
+                  <AbsoluteTargetSpeed value="$EgoSpeed"/>
+                </SpeedActionTarget>
+              </SpeedAction>
+            </LongitudinalAction>
+          </PrivateAction>
+        </Private>
+      </Actions>
+    </Init>
+    <Story name="CutInStory">
+      <Act name="CutInAct">
+        <!-- ManeuverGroups, Maneuvers, Events, and Actions -->
+      </Act>
+    </Story>
+  </Storyboard>
+</OpenSCENARIO>
+```
+
+### 2.2 ASAM OpenDRIVE (.xodr)
+- Version Support: 1.4, 1.5, 1.6, 1.7
+- Root Element: `<OpenDRIVE>`
+- Description: Defines road geometry (lines, spirals, arcs, poly3, paramPoly3), lane sections, lane widths, road marks, elevations, super-elevations, junctions, signals, and road objects.
+- XML Structure Example:
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenDRIVE>
+  <header revMajor="1" revMinor="5" name="Example Highway" version="1" date="2026-01-01" north="0.0" south="0.0" east="0.0" west="0.0"/>
+  <road name="Road 1" length="500.0" id="1" junction="-1">
+    <link/>
+    <planView>
+      <geometry s="0.0" x="0.0" y="0.0" hdg="0.0" length="500.0">
+        <line/>
+      </geometry>
+    </planView>
+    <lanes>
+      <laneSection s="0.0">
+        <center>
+          <lane id="0" type="none" level="false">
+            <roadMark sOffset="0.0" type="broken" weight="standard" color="standard" width="0.15"/>
+          </lane>
+        </center>
+        <right>
+          <lane id="-1" type="driving" level="false">
+            <width sOffset="0.0" a="3.5" b="0.0" c="0.0" d="0.0"/>
+            <roadMark sOffset="0.0" type="solid" weight="standard" color="standard" width="0.15"/>
+          </lane>
+        </right>
+      </laneSection>
+    </lanes>
+  </road>
+</OpenDRIVE>
+```
+
+---
+
+## 3. Architecture & Internal Subsystems
+
+```
++-------------------------------------------------------------------------------+
+|                             User Interface (React 19)                         |
+|  - File Dropzone (.xosc & .xodr validation)                                   |
+|  - Player Controls Dock (Play, Pause, Step Fwd/Back, Speed 0.25x-4x, Seek)     |
+|  - Scenario Inspector Panel (Entity telemetry, dynamic parameters)            |
+|  - Theme Controller (Light/Dark/System via Tailwind CSS)                      |
++-------------------------------------------------------------------------------+
+                                      |
+                           Worker RPC (postMessage)
+                                      v
++-------------------------------------------------------------------------------+
+|                      Web Worker (simulation.worker.ts)                        |
+|  - esmini WebAssembly Runtime (C++ compiled with Emscripten)                  |
+|  - Off-screen road network geometry tessellation                              |
+|  - Simulation step loop (dt = 0.02s / 50Hz)                                   |
+|  - Historical frame ring-buffer cache for instant backward seeking            |
++-------------------------------------------------------------------------------+
+                                      |
+                     Transferred Geometry & Frame Buffers
+                                      v
++-------------------------------------------------------------------------------+
+|                     3D Viewport Renderer (Three.js)                           |
+|  - Road network meshes, asphalt textures, and lane boundary shaders           |
+|  - Entity rendering (vehicles, bounding boxes, wheel rotations, heading)      |
+|  - Multi-camera manager: Orbit Controls, Follow Cam, Top-Down Birds-Eye View  |
+|  - Grid & coordinate visualizers                                              |
++-------------------------------------------------------------------------------+
+```
+
+### 3.1 Coordinate Systems
+- **ASAM Standards (OpenSCENARIO / OpenDRIVE)**:
+  - ISO 8855 right-handed coordinate system:
+    - `+X` = East / Forward
+    - `+Y` = North / Left
+    - `+Z` = Up
+    - `Heading (hdg)` = Counter-clockwise rotation around Z axis, 0 radians pointing along positive X.
+- **Three.js World Coordinates**:
+  - `+X` = East / Right
+  - `+Y` = Up
+  - `+Z` = South / Towards Camera
+- **Coordinate Mapping Applied**:
+  - `Three.X = OpenX.X`
+  - `Three.Y = OpenX.Z` (elevation)
+  - `Three.Z = -OpenX.Y`
+  - `Three.Rotation.Y = OpenX.hdg`
+
+---
+
+## 4. Web Worker Communication Protocol
+
+The Web Worker communicates with the UI via typed JSON messages:
+
+### Incoming Commands (`WorkerCommand`)
+- `INIT`: Initializes the WASM module and preloads built-in vehicle catalogs.
+- `LOAD_SCENARIO`: Passes `{ xosc: string, xodr: string, catalogs?: Record<string, string> }`. Returns road geometry and frame 0.
+- `PLAY`: Starts off-main-thread stepping loop at requested speed.
+- `PAUSE`: Freezes simulation time.
+- `STOP`: Resets simulation to t = 0.
+- `STEP_FORWARD`: Advances simulation by discrete `dt` (0.02s).
+- `STEP_BACKWARD`: Restores previously cached frame state from frame buffer.
+- `SEEK`: Jumps to target simulation time `t` (in seconds).
+- `SET_SPEED`: Updates playback multiplier (e.g. `0.5`, `1.0`, `2.0`).
+
+### Outgoing Messages (`WorkerMessage`)
+- `READY`: WASM module loaded and verified.
+- `SCENARIO_LOADED`: Returns `ScenarioRoadGeometry`, `ScenarioFrame`, initial duration, and metadata.
+- `FRAME`: Emits current `ScenarioFrame` during playback.
+- `PLAYBACK_STATE`: Emits playback status (isPlaying, simulationTime, duration, isCompleted).
+- `ERROR`: Emits error description and stack trace on invalid XML or execution exception.
+
+---
+
+## 5. UI Controls & Shortcuts
+
+| Action | Control / Key | Description |
+|---|---|---|
+| Play / Pause | Space / Play Button | Toggle real-time scenario simulation |
+| Step Forward | Arrow Right / Step Button | Advance scenario by 1 frame (0.02s) |
+| Step Backward | Arrow Left / Step Back Button | Rewind scenario by 1 frame using frame cache |
+| Toggle Orbit View | Key `1` / Camera Dropdown | Free orbit rotation around origin or selected entity |
+| Toggle Follow View | Key `2` / Camera Dropdown | Chase camera anchored behind Ego vehicle |
+| Toggle Top-Down View | Key `3` / Camera Dropdown | 2D/3D Orthographic/Perspective overhead map view |
+| Reset Camera Angle | Reset Icon | Restores camera heading and tilt to default |
+| Zoom In / Out | Wheel / +/- Buttons | Adjusts viewport magnification |
+| Toggle Inspector | Inspector Button | Slides open scenario entity properties and parameters |
+| Toggle Dark Mode | Sun/Moon Button | Toggles between Dark, Light, and System themes |
+
+---
+
+## 6. Frequently Asked Questions (FAQ)
+
+**Q: Do I need to install esmini, CMake, or C++ compilers?**  
+A: No. OpenX Studio runs the pre-compiled esmini WebAssembly binary directly inside the browser sandbox.
+
+**Q: Are my proprietary scenarios uploaded to an external server?**  
+A: No. All parsing, validation, road tessellation, and simulation stepping occur strictly client-side inside your local browser instance.
+
+**Q: What happens if my .xosc references an external .xodr file?**  
+A: OpenX Studio's dual dropzone allows uploading both files concurrently. The engine automatically links the road network logic file.
+
+---
+
+## 7. Developer & Embed Guide
+
+To run or build OpenX Studio locally:
+```bash
+# Clone the repository
+git clone https://github.com/esmini/esmini-web.git
+cd esmini-web
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# Build production bundle
+npm run build
+```
+
+Built with ❤️ for the Automotive & Autonomous Driving Community.

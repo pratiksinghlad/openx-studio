@@ -1,0 +1,20 @@
+{
+  "name": "OpenX Studio — ASAM OpenSCENARIO & OpenDRIVE Simulator",
+  "short_name": "OpenX Studio",
+  "description": "In-browser Scenario Player, Visual Editor, and Simulator for ASAM OpenSCENARIO and OpenDRIVE.",
+  "start_url": "/pratiksinghlad/openx-studio/",
+  "scope": "/pratiksinghlad/openx-studio/",
+  "display": "standalone",
+  "background_color": "#090d16",
+  "theme_color": "#2563eb",
+  "orientation": "any",
+  "categories": ["developer", "simulation", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

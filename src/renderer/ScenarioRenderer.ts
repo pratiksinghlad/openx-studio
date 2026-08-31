@@ -12,76 +12,16 @@ import {
   createFallbackBoundaryMarks,
 } from './geometryUtils';
 
-export const CAMERA_MODES = {
-  ORBIT: 'ORBIT',
-  FOLLOW_EGO: 'FOLLOW_EGO',
-  TOP_DOWN: 'TOP_DOWN',
-} as const;
+export * from './types';
+import {
+  CameraMode,
+  ViewTheme,
+  CameraConfig,
+  CAMERA_MODES,
+  VIEW_THEMES,
+  DEFAULT_CAMERA_CONFIG,
+} from './types';
 
-export type CameraMode = (typeof CAMERA_MODES)[keyof typeof CAMERA_MODES];
-
-export const VIEW_THEMES = {
-  LIGHT: 'LIGHT',
-  DARK: 'DARK',
-} as const;
-
-export type ViewTheme = (typeof VIEW_THEMES)[keyof typeof VIEW_THEMES];
-
-export interface CameraConfig {
-  fov: number;
-  near: number;
-  far: number;
-  initialPosition: { x: number; y: number; z: number };
-  initialTarget: { x: number; y: number; z: number };
-  birdsEyeOffsetFactors: { x: number; y: number; z: number };
-  minBoundDimension: number;
-  maxBoundDimension: number;
-  orbitMaxPolarAngle: number;
-  orbitMinPolarAngle: number;
-  topDownMaxPolarAngle: number;
-  topDownMinPolarAngle: number;
-  topDownHeight: number;
-  topDownLerpFactor: number;
-  followOffsetDistance: number;
-  followHeight: number;
-  followLookAheadDistance: number;
-  followTargetHeight: number;
-  followLerpFactor: number;
-  dampingFactor: number;
-  orbitBehindDistance: number;
-  orbitLateralDistance: number;
-  orbitHeight: number;
-  orbitLookAheadDistance: number;
-  orbitLerpFactor: number;
-}
-
-export const DEFAULT_CAMERA_CONFIG: CameraConfig = {
-  fov: 50,
-  near: 0.1,
-  far: 20000,
-  initialPosition: { x: 28, y: 14, z: 16 },
-  initialTarget: { x: 0, y: 0, z: 1 },
-  birdsEyeOffsetFactors: { x: -0.45, y: -0.45, z: 0.4 },
-  minBoundDimension: 25,
-  maxBoundDimension: 100,
-  orbitMaxPolarAngle: Math.PI / 2 - 0.02,
-  orbitMinPolarAngle: 0.0,
-  topDownMaxPolarAngle: 0.01,
-  topDownMinPolarAngle: 0.0,
-  topDownHeight: 70,
-  topDownLerpFactor: 0.1,
-  followOffsetDistance: 14,
-  followHeight: 6,
-  followLookAheadDistance: 8,
-  followTargetHeight: 1.2,
-  followLerpFactor: 0.1,
-  dampingFactor: 0.08,
-  orbitBehindDistance: 28,
-  orbitLateralDistance: 14,
-  orbitHeight: 16,
-  orbitLookAheadDistance: 8,
-  orbitLerpFactor: 0.12,
-};
 
 export class ScenarioRenderer {
   private container: HTMLElement;
@@ -333,6 +273,8 @@ export class ScenarioRenderer {
     this.camera.up.set(0, 0, 1);
     this.controls.target.copy(this.defaultCameraTarget);
     this.camera.position.copy(this.defaultCameraPosition);
+    this.camera.lookAt(this.controls.target);
+    this.controls.enableRotate = true;
     this.controls.maxPolarAngle = this.cameraConfig.orbitMaxPolarAngle;
     this.controls.minPolarAngle = this.cameraConfig.orbitMinPolarAngle;
     this.controls.update();
@@ -348,20 +290,19 @@ export class ScenarioRenderer {
     if (mode === CAMERA_MODES.ORBIT) {
       this.camera.up.set(0, 0, 1);
       this.controls.enabled = true;
-      this.controls.maxPolarAngle = this.cameraConfig.orbitMaxPolarAngle;
-      this.controls.minPolarAngle = this.cameraConfig.orbitMinPolarAngle;
+      this.controls.enableRotate = true;
+      this.controls.enablePan = true;
+      this.controls.enableZoom = true;
       this.resetToDefaultView();
     } else if (mode === CAMERA_MODES.TOP_DOWN) {
-      this.controls.enabled = true;
-      this.controls.maxPolarAngle = this.cameraConfig.topDownMaxPolarAngle;
-      this.controls.minPolarAngle = this.cameraConfig.topDownMinPolarAngle;
       this.camera.up.set(Math.cos(heading), Math.sin(heading), 0);
+      this.controls.enabled = true;
+      this.controls.enableRotate = false;
+      this.controls.enablePan = true;
+      this.controls.enableZoom = true;
       this.controls.target.set(focusPos.x, focusPos.y, 0);
-      this.camera.position.set(
-        focusPos.x,
-        focusPos.y,
-        this.cameraConfig.topDownHeight
-      );
+      this.camera.position.set(focusPos.x, focusPos.y, this.cameraConfig.topDownHeight);
+      this.camera.lookAt(this.controls.target);
       this.controls.update();
     } else if (mode === CAMERA_MODES.FOLLOW_EGO) {
       this.camera.up.set(0, 0, 1);
@@ -378,6 +319,7 @@ export class ScenarioRenderer {
         focusPos.y + Math.sin(heading) * this.cameraConfig.followLookAheadDistance,
         focusPos.z + this.cameraConfig.followTargetHeight
       );
+      this.camera.lookAt(this.controls.target);
     }
   }
 
@@ -1035,7 +977,11 @@ export class ScenarioRenderer {
   }
 
   public resetAngle(): void {
-    this.setAngleDeg(0);
+    if (this.cameraMode === CAMERA_MODES.ORBIT) {
+      this.resetToDefaultView();
+    } else {
+      this.setAngleDeg(0);
+    }
   }
 
   public handleResize() {

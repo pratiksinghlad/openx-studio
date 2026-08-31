@@ -1,0 +1,72 @@
+# OpenX Studio
+
+> OpenX Studio is a client-side, in-browser scenario player, visual editor, and 3D simulator for ASAM OpenSCENARIO (.xosc) and ASAM OpenDRIVE (.xodr) automotive standards. Powered by esmini WebAssembly (WASM), Web Workers, Three.js, and React.
+
+## Overview
+
+OpenX Studio provides automotive engineers, ADAS/AV researchers, and simulation specialists with a zero-install, high-performance web platform to author, inspect, validate, and simulate OpenSCENARIO and OpenDRIVE files directly in the browser with 60+ FPS 3D rendering.
+
+Website: https://pratiksinghlad.github.io/openx-studio/
+
+## Core Features & Capabilities
+
+- **In-Browser Scenario Simulation**: Real-time OpenSCENARIO execution running on the C++ esmini simulation engine compiled to WebAssembly (WASM).
+- **Dual File Dropzone & Validation**: Drag & drop or upload `.xosc` and `.xodr` files with instant XML schema validation, root tag inspection, and syntax error detection.
+- **Built-in Demo Scenarios**: Instant one-click presets for common maneuvers (Cut-in, Lane Change, Following, Junction Crossing).
+- **Off-Main-Thread Execution**: Simulation stepping and 3D road mesh generation run inside a dedicated Web Worker to maintain smooth 60+ FPS UI responsiveness.
+- **Interactive 3D Viewport**: Hardware-accelerated Three.js renderer featuring:
+  - Orbit Camera (free rotate, pan, zoom)
+  - Follow Camera (chase perspective tracking the ego vehicle)
+  - Top-Down / Bird's-Eye Camera (2D/3D map overview)
+  - Visual grid, road geometry, dynamic vehicles, and lane markings.
+- **Full Playback & Timeline Controls**:
+  - Play, Pause, Stop, Seek/Scrub timeline slider.
+  - Forward step and instant backward step with internal frame-state caching.
+  - Variable speed playback (0.25x, 0.5x, 1x, 1.5x, 2x, 4x).
+- **Scenario & Entity Inspector**:
+  - Live list of simulated vehicles, pedestrians, and static objects.
+  - Real-time telemetry (speed in km/h & m/s, world position X/Y/Z, heading, wheel angles).
+  - OpenSCENARIO parameter declarations, storyboards, and road network metadata.
+- **Dark / Light / System Theme Support**: Adaptive, accessible modern UI built with Tailwind CSS and Radix UI.
+
+## Supported Standards & Specifications
+
+- **ASAM OpenSCENARIO® (v1.0, v1.1, v1.2)**: Open standard for describing the dynamic content of autonomous vehicle driving scenarios.
+- **ASAM OpenDRIVE® (v1.4, v1.5, v1.6, v1.7)**: Open standard for describing static road network geometry, lanes, and junctions.
+- **esmini Runtime Engine**: Environment Simulator Minimalistic (MPL-2.0 license).
+
+## Architecture & Technology
+
+- **Frontend**: React 19, TypeScript, Tailwind CSS, Lucide Icons, Radix UI primitives.
+- **3D Graphics**: Three.js (WebGL renderer with custom shaders, meshes, line geometries, and shadows).
+- **Simulation Runtime**: esmini compiled to WebAssembly via Emscripten.
+- **Concurrency**: Web Worker RPC with structured message passing (`postMessage`, `Transferable` buffers).
+- **Build Tooling**: Vite 6, TypeScript 5.
+
+## How to Use
+
+1. **Open the Studio**: Visit https://pratiksinghlad.github.io/openx-studio/ in any modern WebGL-compatible browser (Chrome, Edge, Firefox, Safari, Brave).
+2. **Load a Scenario**:
+   - Drag & drop an OpenSCENARIO XML file (`.xosc`) and OpenDRIVE road network file (`.xodr`) into the dropzone.
+   - Or click **Load Example Demo** to simulate a preloaded scenario immediately.
+3. **Control Playback**:
+   - Use the bottom floating dock to play, pause, step, or adjust playback speed.
+   - Click and drag the timeline bar to scrub through scenario time.
+4. **Inspect Entities**:
+   - Click the **Inspector** button or click on any vehicle in the 3D viewport to inspect live speed, coordinates, and road parameters.
+5. **Switch Views**:
+   - Use the camera selector to toggle between Orbit, Follow Ego, and Top-Down perspectives.
+
+## Key Files & Machine-Readable Resources
+
+- Full LLM Documentation: [llms-full.txt](https://pratiksinghlad.github.io/openx-studio/llms-full.txt) - In-depth technical guide, API schema, RPC protocols, and XML examples.
+- XML Sitemap: [sitemap.xml](https://pratiksinghlad.github.io/openx-studio/sitemap.xml) - Complete page and resource index for web crawlers.
+- Robots Rules: [robots.txt](https://pratiksinghlad.github.io/openx-studio/robots.txt) - Universal crawl and scraper access permissions.
+- Web App Manifest: [site.webmanifest](https://pratiksinghlad.github.io/openx-studio/site.webmanifest) - PWA manifest metadata.
+
+## Links & Reference
+
+- [GitHub Repository](https://github.com/esmini/esmini) (esmini OpenSCENARIO Engine)
+- [ASAM Standards Official Portal](https://www.asam.net/)
+- [OpenSCENARIO Specification](https://www.asam.net/standards/detail/openscenario/)
+- [OpenDRIVE Specification](https://www.asam.net/standards/detail/opendrive/)
