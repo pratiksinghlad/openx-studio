@@ -21,6 +21,7 @@ export interface ScenarioViewportHandle {
   zoomIn: () => void;
   zoomOut: () => void;
   resetAngle: () => void;
+  getCanvas: () => HTMLCanvasElement | null;
 }
 
 interface ScenarioViewportProps {
@@ -58,11 +59,12 @@ export const ScenarioViewport = forwardRef<ScenarioViewportHandle, ScenarioViewp
   const onViewportStateRef = useRef(onViewportState);
   onViewportStateRef.current = onViewportState;
 
-  // Expose imperative commands for zoom/angle
+  // Expose imperative commands for zoom/angle/canvas
   useImperativeHandle(ref, () => ({
     zoomIn: () => rendererRef.current?.zoomIn(),
     zoomOut: () => rendererRef.current?.zoomOut(),
     resetAngle: () => rendererRef.current?.resetAngle(),
+    getCanvas: () => rendererRef.current?.getCanvas() || null,
   }), []);
 
   // Initialize ScenarioRenderer

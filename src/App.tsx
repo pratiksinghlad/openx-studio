@@ -5,6 +5,7 @@ import { FilePayload } from './types/protocol';
 import { CameraMode, CAMERA_MODES, VIEW_THEMES } from './renderer/types';
 import { useTheme } from './hooks/useTheme';
 import { useRouter } from './hooks/useRouter';
+import { useScenarioRecorder } from './hooks/useScenarioRecorder';
 import { FileUploader } from './components/FileUploader';
 import type { ScenarioViewportHandle, ViewportState } from './components/ScenarioViewport';
 import { ErrorBanner } from './components/ErrorBanner';
@@ -313,6 +314,30 @@ export function App() {
     viewportRef.current?.resetAngle();
   }, []);
 
+  const handleAutoPlayStart = useCallback(() => {
+    if (workerClient && isLoaded) {
+      if (isCompleted || simulationTime >= duration - 0.1) {
+        workerClient.seek(0);
+      }
+      workerClient.play();
+    }
+  }, [workerClient, isLoaded, isCompleted, simulationTime, duration]);
+
+  const {
+    isRecording,
+    recordedDuration,
+    toggleRecording,
+  } = useScenarioRecorder({
+    scenarioName,
+    isCompleted,
+    onAutoPlayStart: handleAutoPlayStart,
+  });
+
+  const handleToggleRecord = useCallback(() => {
+    const canvas = viewportRef.current?.getCanvas() || null;
+    toggleRecording(canvas);
+  }, [toggleRecording]);
+
   if (isAbout) {
     return (
       <Suspense
@@ -547,6 +572,8 @@ export function App() {
             isFullscreen={isFullscreen}
             zoomPercent={zoomPercent}
             angleDeg={angleDeg}
+            isRecording={isRecording}
+            recordedDuration={recordedDuration}
             onPlay={handlePlay}
             onPause={handlePause}
             onStop={handleStop}
@@ -559,6 +586,7 @@ export function App() {
             onZoomIn={handleZoomIn}
             onZoomOut={handleZoomOut}
             onAngleReset={handleAngleReset}
+            onToggleRecord={handleToggleRecord}
           />
         </Suspense>
       </main>
