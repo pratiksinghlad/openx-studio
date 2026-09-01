@@ -788,7 +788,7 @@ const LegalAttributionCard: React.FC<{
             <a
               href="https://www.asam.net"
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="text-primary hover:underline inline-flex items-center gap-0.5 font-semibold"
             >
               ASAM e.V.
@@ -816,7 +816,7 @@ const LegalAttributionCard: React.FC<{
             <a
               href="https://github.com/esmini/esmini"
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="text-primary hover:underline inline-flex items-center gap-0.5 font-semibold"
             >
               esmini

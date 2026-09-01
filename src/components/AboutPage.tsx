@@ -151,7 +151,7 @@ const AboutCreatorCard: React.FC<{ onBackToSimulator: () => void }> = ({ onBackT
           <a
             href="https://github.com/pratiksinghlad"
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             className="text-base font-bold text-foreground hover:text-primary transition-colors inline-flex items-center gap-1.5 truncate"
           >
             Pratik Singh Lad
@@ -169,7 +169,7 @@ const AboutCreatorCard: React.FC<{ onBackToSimulator: () => void }> = ({ onBackT
         <a
           href="https://github.com/pratiksinghlad"
           target="_blank"
-          rel="noreferrer"
+          rel="noopener noreferrer"
           className="w-full"
         >
           <Button variant="outline" size="sm" className="w-full h-9 text-xs font-semibold gap-1.5 justify-center">
@@ -181,7 +181,7 @@ const AboutCreatorCard: React.FC<{ onBackToSimulator: () => void }> = ({ onBackT
         <a
           href="https://github.com/pratiksinghlad/openx-studio"
           target="_blank"
-          rel="noreferrer"
+          rel="noopener noreferrer"
           className="w-full"
         >
           <Button variant="default" size="sm" className="w-full h-9 text-xs font-semibold gap-1.5 justify-center">
