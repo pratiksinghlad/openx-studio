@@ -13,3 +13,7 @@
 ## OpenSCENARIO Domain Ordering & Parameter Classification
 - OpenSCENARIO test matrices frequently contain large parameter sets (100+ items). Adhere strictly to the PEGASUS 6-layer model & ASAM OpenODD standards by prioritizing **ODD (Operational Design Domain & Environment)** first, followed by **Behavior & Dynamics**, then **Entities**, and finally **System**.
 - Infer semantic descriptions and physical engineering units ($\text{m/s}$, $\text{lx}$, $\text{m}$, $\text{s}$, $\mu$, $^\circ$, $\text{m/s}^2$) directly from naming patterns and type metadata.
+
+## YouTube-Style Player Keyboard Shortcuts & Target Filtering
+- Intercept player hotkeys globally only after scenario simulation is loaded (`isLoaded === true`), strictly skipping interactive target elements (`<input>`, `<textarea>`, `<select>`, `contenteditable`) and modifier combinations (`Ctrl`, `Meta`, `Alt`) to avoid interfering with form fields, dialogs, and OS/browser shortcuts.
+- Prevent default for keys like `Space`, `ArrowLeft`, and `ArrowRight` so that playback controls do not trigger page scrolling.
