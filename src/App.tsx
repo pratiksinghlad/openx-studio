@@ -25,8 +25,12 @@ import {
   Sun,
   Moon,
   Info,
+  Download,
 } from 'lucide-react';
+import { usePWAInstall } from './hooks/usePWAInstall';
+import { InstallModal } from './components/InstallModal';
 import { cn } from './lib/utils';
+import { DEFAULT_STEP_INTERVAL_SECONDS } from './constants/playback';
 
 const ScenarioViewport = lazy(() =>
   import('./components/ScenarioViewport').then((m) => ({ default: m.ScenarioViewport }))
@@ -68,7 +72,9 @@ export function App() {
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showInstallModal, setShowInstallModal] = useState(false);
   const { isAbout, navigateToAbout, navigateToHome } = useRouter();
+  const { isInstallable, isInstalled, promptInstall } = usePWAInstall();
   const [zoomPercent, setZoomPercent] = useState(100);
   const [angleDeg, setAngleDeg] = useState(0);
 
@@ -247,13 +253,13 @@ export function App() {
 
   const handleStepForward = useCallback(() => {
     if (workerClient && isLoaded) {
-      workerClient.stepForward();
+      workerClient.stepForward(DEFAULT_STEP_INTERVAL_SECONDS);
     }
   }, [workerClient, isLoaded]);
 
   const handleStepBackward = useCallback(() => {
     if (workerClient && isLoaded) {
-      workerClient.stepBackward();
+      workerClient.stepBackward(DEFAULT_STEP_INTERVAL_SECONDS);
     }
   }, [workerClient, isLoaded]);
 
@@ -338,6 +344,22 @@ export function App() {
     toggleRecording(canvas);
   }, [toggleRecording]);
 
+  const handleInstallClick = useCallback(async () => {
+    if (isInstallable) {
+      const outcome = await promptInstall();
+      if (outcome === 'unsupported') {
+        setShowInstallModal(true);
+      }
+    } else {
+      setShowInstallModal(true);
+    }
+  }, [isInstallable, promptInstall]);
+
+  const handlePromptInstallFromModal = useCallback(async () => {
+    await promptInstall();
+    setShowInstallModal(false);
+  }, [promptInstall]);
+
   if (isAbout) {
     return (
       <Suspense
@@ -356,46 +378,50 @@ export function App() {
     <div className="flex flex-col h-screen w-screen bg-background text-foreground overflow-hidden">
       {/* Top Navbar */}
       {!isFullscreen && (
-        <header className="relative h-16 min-h-16 bg-card/95 backdrop-blur-md border-b border-border flex items-center justify-between px-5 z-30 shrink-0 shadow-sm">
-          {/* Brand Logo & Title */}
-          <button 
-            onClick={handleGoHome}
-            className="flex items-center gap-3 relative z-10 text-left hover:opacity-80 transition-opacity focus:outline-none"
-            aria-label="Go to Home"
-          >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center text-white shadow-md shadow-blue-500/25 shrink-0">
-              <Car className="h-5 w-5" />
-            </div>
-            <div className="flex flex-col">
-              <h1 className="text-base font-bold tracking-tight text-foreground leading-tight">
-                OpenX Studio
-              </h1>
-              <span className="text-xs font-medium text-muted-foreground tracking-wide">
-                OpenSCENARIO & OpenDRIVE
-              </span>
-            </div>
-          </button>
+        <header className="relative h-16 min-h-16 bg-card/95 backdrop-blur-md border-b border-border flex items-center justify-between px-4 sm:px-5 z-30 shrink-0 shadow-sm gap-3">
+          {/* Left: Brand Logo & Title + Scenario Badge */}
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+            <button 
+              onClick={handleGoHome}
+              className="flex items-center gap-2.5 sm:gap-3 text-left hover:opacity-80 transition-opacity focus:outline-none shrink-0 cursor-pointer"
+              aria-label="Go to Home"
+            >
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center text-white shadow-md shadow-blue-500/25 shrink-0">
+                <Car className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
+              </div>
+              <div className="flex flex-col">
+                <h1 className="text-sm sm:text-base font-bold tracking-tight text-foreground leading-tight">
+                  OpenX Studio
+                </h1>
+                <span className="text-[10px] sm:text-xs font-medium text-muted-foreground tracking-wide">
+                  OpenSCENARIO & OpenDRIVE
+                </span>
+              </div>
+            </button>
 
-          {/* Scenario Badge or Engine Status - Centered on page in top bar */}
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none max-w-[calc(100vw-440px)] z-0">
-            <div className="pointer-events-auto truncate">
+            {/* Subtle Divider between Brand and Scenario Badge */}
+            <div className="h-6 w-px bg-border/60 hidden sm:block shrink-0" />
+
+            {/* Scenario Badge (Positioned towards left, smaller text size, interactive) */}
+            <div className="min-w-0 flex items-center">
               {scenarioName ? (
-                <Badge
-                  variant="outline"
-                  className="gap-2 py-1.5 px-4 bg-primary/10 border-primary/30 text-primary font-bold text-sm max-w-[min(45vw,420px)] truncate shadow-xs"
-                  title={`Loaded Scenario: ${scenarioName}`}
+                <button
+                  type="button"
+                  onClick={() => setShowInspector((prev) => !prev)}
+                  className="group flex items-center gap-1.5 py-1 px-2.5 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-lg text-primary text-xs font-semibold max-w-[180px] sm:max-w-[260px] md:max-w-[320px] lg:max-w-[400px] truncate shadow-xs transition-colors cursor-pointer"
+                  title={`Loaded Scenario: ${scenarioName} (Click to inspect)`}
                 >
-                  <Layers className="h-4 w-4 shrink-0" />
+                  <Layers className="h-3.5 w-3.5 shrink-0 text-primary group-hover:scale-105 transition-transform" />
                   <span className="truncate">{scenarioName}</span>
-                </Badge>
+                </button>
               ) : (
                 <Badge
                   variant="outline"
-                  className="gap-2 py-1.5 px-4 text-sm text-muted-foreground bg-muted/40 font-medium shadow-xs"
+                  className="gap-1.5 py-1 px-2.5 text-xs text-muted-foreground bg-muted/40 font-medium shadow-xs"
                 >
                   <Sparkles
                     className={cn(
-                      'h-4 w-4 shrink-0',
+                      'h-3.5 w-3.5 shrink-0',
                       isLoadingScenario
                         ? 'text-amber-500 animate-spin'
                         : isWorkerReady
@@ -403,26 +429,33 @@ export function App() {
                         : 'text-primary'
                     )}
                   />
-                  <span>
+                  <span className="hidden sm:inline">
                     {isLoadingScenario
                       ? 'Loading Simulation Engine...'
                       : isWorkerReady
                       ? 'esmini WASM Engine Ready'
                       : 'Ready to Load Scenario'}
                   </span>
+                  <span className="sm:hidden">
+                    {isLoadingScenario
+                      ? 'Loading Engine...'
+                      : isWorkerReady
+                      ? 'Engine Ready'
+                      : 'Ready'}
+                  </span>
                 </Badge>
               )}
             </div>
           </div>
 
-          {/* Header Action Buttons */}
-          <div className="flex items-center gap-2.5 relative z-10">
+          {/* Right: Header Action Buttons */}
+          <div className="flex items-center gap-2 sm:gap-2.5 relative z-10 shrink-0">
             {isLoaded && (
               <Button
                 variant={showInspector ? 'default' : 'outline'}
                 size="default"
                 onClick={() => setShowInspector((prev) => !prev)}
-                className="gap-2 h-9 px-3.5 text-sm font-semibold shadow-xs"
+                className="gap-1.5 h-9 px-3 sm:px-3.5 text-xs sm:text-sm font-semibold shadow-xs transition-all cursor-pointer"
                 aria-label="Toggle Scenario Inspector"
               >
                 <Info className="h-4 w-4" />
@@ -434,7 +467,7 @@ export function App() {
               variant="outline"
               size="default"
               onClick={handleOpenAbout}
-              className="gap-1.5 h-9 px-3 text-sm font-semibold shadow-xs"
+              className="gap-1.5 h-9 px-2.5 sm:px-3 text-xs sm:text-sm font-semibold shadow-xs cursor-pointer"
               title="About OpenX Studio & Privacy"
               aria-label="About OpenX Studio & Privacy"
             >
@@ -442,11 +475,25 @@ export function App() {
               <span className="hidden sm:inline">About</span>
             </Button>
 
+            {!isInstalled && (
+              <Button
+                variant="outline"
+                size="default"
+                onClick={handleInstallClick}
+                className="gap-1.5 h-9 px-2.5 sm:px-3 text-xs sm:text-sm font-semibold shadow-xs hover:bg-primary/10 hover:text-primary hover:border-primary/40 cursor-pointer"
+                title="Install OpenX Studio as Desktop App"
+                aria-label="Install OpenX Studio as Desktop App"
+              >
+                <Download className="h-4 w-4 text-primary" />
+                <span className="hidden md:inline">Install App</span>
+              </Button>
+            )}
+
             <Button
               variant="outline"
               size="default"
               onClick={toggleTheme}
-              className="h-9 w-9 p-0 text-foreground shadow-xs"
+              className="h-9 w-9 p-0 text-foreground shadow-xs cursor-pointer"
               title={
                 theme === VIEW_THEMES.LIGHT
                   ? isSystem
@@ -472,11 +519,12 @@ export function App() {
                 variant="outline"
                 size="default"
                 onClick={() => setShowUploadModal(true)}
-                className="gap-2 h-9 px-3.5 text-sm font-semibold shadow-xs"
+                className="gap-1.5 sm:gap-2 h-9 px-2.5 sm:px-3.5 text-xs sm:text-sm font-semibold shadow-xs cursor-pointer"
                 title="Upload another scenario"
               >
                 <FolderOpen className="h-4 w-4" />
-                <span>Change Scenario</span>
+                <span className="hidden sm:inline">Change Scenario</span>
+                <span className="sm:hidden">Change</span>
               </Button>
             )}
           </div>
@@ -559,6 +607,15 @@ export function App() {
           </Dialog>
         )}
 
+        {/* Desktop PWA Install Modal */}
+        <InstallModal
+          isOpen={showInstallModal}
+          onClose={() => setShowInstallModal(false)}
+          isInstallable={isInstallable}
+          isInstalled={isInstalled}
+          onPromptInstall={handlePromptInstallFromModal}
+        />
+
         {/* Minimal Unobtrusive Player Controls Dock */}
         <Suspense fallback={null}>
           <PlayerControls
@@ -572,6 +629,7 @@ export function App() {
             isFullscreen={isFullscreen}
             zoomPercent={zoomPercent}
             angleDeg={angleDeg}
+            stepIntervalSeconds={DEFAULT_STEP_INTERVAL_SECONDS}
             isRecording={isRecording}
             recordedDuration={recordedDuration}
             onPlay={handlePlay}

@@ -142,10 +142,16 @@ export interface ScenarioFileHeaderMetadata {
   revMinor?: string;
 }
 
+export type ParameterDomainCategory = 'odd' | 'behavior' | 'entity' | 'general';
+
 export interface ScenarioParameterMetadata {
   name: string;
   type: string;
   value: string;
+  category?: ParameterDomainCategory;
+  meaning?: string;
+  unit?: string;
+  description?: string;
 }
 
 export interface ScenarioRoadMetadata {
@@ -169,7 +175,24 @@ export interface ScenarioEnvironmentMetadata {
   sunElevation?: number;
   sunIntensity?: number;
   windSpeed?: number;
+  windDirection?: number;
   friction?: number;
+  fogVisualRange?: number;
+  precipitationType?: 'dry' | 'rain' | 'snow' | 'hail' | string;
+  precipitationIntensity?: number;
+  cloudState?: string;
+  temperature?: number;
+  dateTime?: string;
+}
+
+export interface ScenarioBehaviorMetadata {
+  stories?: string[];
+  acts?: string[];
+  maneuvers?: string[];
+  events?: string[];
+  actions?: string[];
+  startTriggers?: string[];
+  stopTriggers?: string[];
 }
 
 export interface ScenarioMetadata {
@@ -178,6 +201,7 @@ export interface ScenarioMetadata {
   roadInfo?: ScenarioRoadMetadata;
   vehicles?: ScenarioVehicleMetadata[];
   environment?: ScenarioEnvironmentMetadata;
+  behavior?: ScenarioBehaviorMetadata;
 }
 
 export interface ScenarioFileValidation {

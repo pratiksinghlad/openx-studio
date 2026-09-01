@@ -4,7 +4,7 @@ import {
   sanitizeScenarioFilename,
   resolveSupportedMimeType,
   RECORDER_CONSTANTS,
-} from './videoRecorder.ts';
+} from '../../src/services/videoRecorder.ts';
 
 describe('VideoRecorderService Utilities', () => {
   it('sanitizes standard scenario filenames to .mp4', () => {
