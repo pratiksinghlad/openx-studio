@@ -1,0 +1,8 @@
+# Deployment Lessons
+
+## Build & Deployment Configuration
+- **Build Output Directory**: Configured to build/ via build.outDir in vite.config.ts. Postbuild script scripts/copy-404.js copies index.html -> 404.html within build/.
+- **Base URL Prefixing**: For GitHub Pages hosted under a repository subpath (e.g. /openx-studio/), base is configured in `vite.config.ts` (`process.env.VITE_BASE ?? (command === 'serve' && mode === 'development' && !isPreview ? '/' : '/openx-studio/')`). This ensures `npm run preview` uses the `/openx-studio/` base path matching the production build output rather than falling back to `/`. Also configure COOP/COEP headers under both `server.headers` and `preview.headers` for WebAssembly/Worker support. Public asset runtime fetches (`esmini.js`, samples) must prepend `import.meta.env.BASE_URL`.
+- **gh-pages Pipeline**: package.json deploy script publishes build/ (gh-pages -d build) with automated predeploy (npm run build) and postbuild (node scripts/copy-404.js).
+- **Vite 8 & Rolldown Manual Chunks**: When configuring `rollupOptions.output.manualChunks` in Vite 8 / Rolldown environments, define `manualChunks` as a function `(id: string) => string | undefined` rather than an object map to avoid bundler runtime type errors.
+- **Tailwind CSS v4 Integration**: Use `@tailwindcss/vite` in `vite.config.ts` plugins and `@import "tailwindcss"; @config "../tailwind.config.js";` in entry CSS files for optimal performance and compatibility.

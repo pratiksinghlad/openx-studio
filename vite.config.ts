@@ -3,8 +3,8 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import viteCompression from 'vite-plugin-compression';
 
-export default defineConfig(({ command }) => ({
-  base: process.env.VITE_BASE ?? (command === 'serve' ? '/' : '/openx-studio/'),
+export default defineConfig(() => ({
+  base: process.env.VITE_BASE ?? '/openx-studio/',
   plugins: [
     react(),
     tailwindcss(),
@@ -41,6 +41,10 @@ export default defineConfig(({ command }) => ({
   },
   preview: {
     port: 3001,
+    headers: {
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+    },
   },
   build: {
     outDir: 'build',

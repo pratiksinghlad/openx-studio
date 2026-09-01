@@ -25,8 +25,12 @@ import {
   Sun,
   Moon,
   Info,
+  Download,
 } from 'lucide-react';
+import { usePWAInstall } from './hooks/usePWAInstall';
+import { InstallModal } from './components/InstallModal';
 import { cn } from './lib/utils';
+import { DEFAULT_STEP_INTERVAL_SECONDS } from './constants/playback';
 
 const ScenarioViewport = lazy(() =>
   import('./components/ScenarioViewport').then((m) => ({ default: m.ScenarioViewport }))
@@ -68,7 +72,9 @@ export function App() {
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showInstallModal, setShowInstallModal] = useState(false);
   const { isAbout, navigateToAbout, navigateToHome } = useRouter();
+  const { isInstallable, isInstalled, promptInstall } = usePWAInstall();
   const [zoomPercent, setZoomPercent] = useState(100);
   const [angleDeg, setAngleDeg] = useState(0);
 
@@ -247,13 +253,13 @@ export function App() {
 
   const handleStepForward = useCallback(() => {
     if (workerClient && isLoaded) {
-      workerClient.stepForward();
+      workerClient.stepForward(DEFAULT_STEP_INTERVAL_SECONDS);
     }
   }, [workerClient, isLoaded]);
 
   const handleStepBackward = useCallback(() => {
     if (workerClient && isLoaded) {
-      workerClient.stepBackward();
+      workerClient.stepBackward(DEFAULT_STEP_INTERVAL_SECONDS);
     }
   }, [workerClient, isLoaded]);
 
@@ -337,6 +343,22 @@ export function App() {
     const canvas = viewportRef.current?.getCanvas() || null;
     toggleRecording(canvas);
   }, [toggleRecording]);
+
+  const handleInstallClick = useCallback(async () => {
+    if (isInstallable) {
+      const outcome = await promptInstall();
+      if (outcome === 'unsupported') {
+        setShowInstallModal(true);
+      }
+    } else {
+      setShowInstallModal(true);
+    }
+  }, [isInstallable, promptInstall]);
+
+  const handlePromptInstallFromModal = useCallback(async () => {
+    await promptInstall();
+    setShowInstallModal(false);
+  }, [promptInstall]);
 
   if (isAbout) {
     return (
@@ -441,6 +463,20 @@ export function App() {
               <Info className="h-4 w-4" />
               <span className="hidden sm:inline">About</span>
             </Button>
+
+            {!isInstalled && (
+              <Button
+                variant="outline"
+                size="default"
+                onClick={handleInstallClick}
+                className="gap-1.5 h-9 px-3 text-sm font-semibold shadow-xs hover:bg-primary/10 hover:text-primary hover:border-primary/40"
+                title="Install OpenX Studio as Desktop App"
+                aria-label="Install OpenX Studio as Desktop App"
+              >
+                <Download className="h-4 w-4 text-primary" />
+                <span className="hidden md:inline">Install App</span>
+              </Button>
+            )}
 
             <Button
               variant="outline"
@@ -559,6 +595,15 @@ export function App() {
           </Dialog>
         )}
 
+        {/* Desktop PWA Install Modal */}
+        <InstallModal
+          isOpen={showInstallModal}
+          onClose={() => setShowInstallModal(false)}
+          isInstallable={isInstallable}
+          isInstalled={isInstalled}
+          onPromptInstall={handlePromptInstallFromModal}
+        />
+
         {/* Minimal Unobtrusive Player Controls Dock */}
         <Suspense fallback={null}>
           <PlayerControls
@@ -572,6 +617,7 @@ export function App() {
             isFullscreen={isFullscreen}
             zoomPercent={zoomPercent}
             angleDeg={angleDeg}
+            stepIntervalSeconds={DEFAULT_STEP_INTERVAL_SECONDS}
             isRecording={isRecording}
             recordedDuration={recordedDuration}
             onPlay={handlePlay}

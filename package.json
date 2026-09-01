@@ -9,7 +9,8 @@
     "build": "tsc && vite build",
     "build:cf": "vite build --base=/",
     "preview": "vite preview",
-    "test": "node --test src/services/videoRecorder.test.ts",
+    "test": "node --test \"tests/**/*.test.ts\"",
+    "generate-icons": "node scripts/generate-icons.js",
     "predeploy": "npm run build",
     "postbuild": "node scripts/copy-404.js",
     "deploy": "gh-pages -d build"

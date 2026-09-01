@@ -4,6 +4,7 @@ import {
   LoadScenarioPayload,
 } from '../types/protocol';
 import { ScenarioRoadGeometry, ScenarioFrame, ScenarioMetadata } from '../types/simulation';
+import { DEFAULT_STEP_INTERVAL_SECONDS } from '../constants/playback';
 
 export type FrameCallback = (frame: ScenarioFrame, simulationTime: number, duration: number, isCompleted: boolean) => void;
 export type ScenarioLoadedCallback = (
@@ -128,12 +129,18 @@ export class SimulationWorkerClient {
     this.postMessage({ type: 'STOP' });
   }
 
-  public stepForward() {
-    this.postMessage({ type: 'STEP_FORWARD' });
+  public stepForward(stepSeconds: number = DEFAULT_STEP_INTERVAL_SECONDS) {
+    this.postMessage({
+      type: 'STEP_FORWARD',
+      payload: { stepSeconds },
+    });
   }
 
-  public stepBackward() {
-    this.postMessage({ type: 'STEP_BACKWARD' });
+  public stepBackward(stepSeconds: number = DEFAULT_STEP_INTERVAL_SECONDS) {
+    this.postMessage({
+      type: 'STEP_BACKWARD',
+      payload: { stepSeconds },
+    });
   }
 
   public seek(targetTime: number) {

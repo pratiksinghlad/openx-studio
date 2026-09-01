@@ -51,10 +51,16 @@ export interface StopCommand extends WorkerCommandMessage {
 
 export interface StepForwardCommand extends WorkerCommandMessage {
   type: 'STEP_FORWARD';
+  payload?: {
+    stepSeconds?: number;
+  };
 }
 
 export interface StepBackwardCommand extends WorkerCommandMessage {
   type: 'STEP_BACKWARD';
+  payload?: {
+    stepSeconds?: number;
+  };
 }
 
 export interface SeekCommand extends WorkerCommandMessage {

@@ -19,20 +19,31 @@ import {
   ScenarioRoadMetadata,
   ScenarioVehicleMetadata,
   ScenarioEnvironmentMetadata,
+  ScenarioBehaviorMetadata,
 } from '../types/simulation';
+import { sortParametersByDomain } from '../lib/scenarioParameters';
+import {
+  DEFAULT_STEP_INTERVAL_SECONDS,
+  FIXED_SIMULATION_DT,
+  BASE_PLAYBACK_INTERVAL_MS,
+  MIN_SCENARIO_DURATION_SECONDS,
+  FALLBACK_SCENARIO_DURATION_SECONDS,
+  MAX_PRE_SIMULATION_STEPS,
+  MIN_PLAYBACK_SPEED,
+  MAX_PLAYBACK_SPEED,
+  MIN_PLAYBACK_INTERVAL_MS,
+} from '../constants/playback';
 
 let esminiModule: any = null;
 let currentScenario: any = null;
 let isPlaying = false;
 let playbackSpeed = 1.0;
 let simulationIntervalId: any = null;
-const FIXED_DT = 0.05; // 20 Hz simulation step
-const BASE_INTERVAL_MS = 50; // 50ms per step at 1x
 
 let frameHistory: ScenarioFrame[] = [];
 let currentHistoryIndex = -1;
 let currentScenarioPath = '';
-let totalDuration = 10.0;
+let totalDuration = FALLBACK_SCENARIO_DURATION_SECONDS;
 
 function vectorToArray<T = any>(vector: any): T[] {
   if (!vector || typeof vector.size !== 'function') {
@@ -317,27 +328,24 @@ function parseDurationFromXosc(xoscContent: string | ArrayBuffer): number {
     return maxTime;
   }
 
-  return 10.0;
+  return FALLBACK_SCENARIO_DURATION_SECONDS;
 }
 
-function parseScenarioMetadata(xoscContent: string | ArrayBuffer, xodrContent: string | ArrayBuffer): ScenarioMetadata {
-  const xoscStr = typeof xoscContent === 'string' ? xoscContent : new TextDecoder().decode(xoscContent);
-  const xodrStr = typeof xodrContent === 'string' ? xodrContent : new TextDecoder().decode(xodrContent);
-
-  // 1. FileHeader
-  let fileHeader: ScenarioFileHeaderMetadata | undefined;
+function extractFileHeader(xoscStr: string): ScenarioFileHeaderMetadata | undefined {
   const headerMatch = xoscStr.match(/<FileHeader\s+([^>]+)\/?>/i);
-  if (headerMatch) {
-    const attrs = headerMatch[1];
-    const desc = attrs.match(/description=["']([^"']*)["']/i)?.[1];
-    const author = attrs.match(/author=["']([^"']*)["']/i)?.[1];
-    const date = attrs.match(/date=["']([^"']*)["']/i)?.[1];
-    const revMajor = attrs.match(/revMajor=["']([^"']*)["']/i)?.[1];
-    const revMinor = attrs.match(/revMinor=["']([^"']*)["']/i)?.[1];
-    fileHeader = { description: desc, author, date, revMajor, revMinor };
-  }
+  if (!headerMatch) return undefined;
 
-  // 2. ParameterDeclarations
+  const attrs = headerMatch[1];
+  return {
+    description: attrs.match(/description=["']([^"']*)["']/i)?.[1],
+    author: attrs.match(/author=["']([^"']*)["']/i)?.[1],
+    date: attrs.match(/date=["']([^"']*)["']/i)?.[1],
+    revMajor: attrs.match(/revMajor=["']([^"']*)["']/i)?.[1],
+    revMinor: attrs.match(/revMinor=["']([^"']*)["']/i)?.[1],
+  };
+}
+
+function extractParameters(xoscStr: string): ScenarioParameterMetadata[] {
   const parameters: ScenarioParameterMetadata[] = [];
   const paramRegex = /<ParameterDeclaration\s+name=["']([^"']+)["']\s+parameterType=["']([^"']+)["']\s+value=["']([^"']+)["']/gi;
   let pMatch;
@@ -348,27 +356,29 @@ function parseScenarioMetadata(xoscContent: string | ArrayBuffer, xodrContent: s
       value: pMatch[3],
     });
   }
+  return sortParametersByDomain(parameters);
+}
 
-  // 3. RoadInfo
-  let roadInfo: ScenarioRoadMetadata | undefined;
+function extractRoadInfo(xodrStr: string): ScenarioRoadMetadata | undefined {
   const roadMatch = xodrStr.match(/<road\s+([^>]+)>/i);
-  if (roadMatch) {
-    const attrs = roadMatch[1];
-    const id = attrs.match(/id=["']([^"']*)["']/i)?.[1];
-    const name = attrs.match(/name=["']([^"']*)["']/i)?.[1];
-    const length = parseFloat(attrs.match(/length=["']([^"']*)["']/i)?.[1] || '0');
-    const rule = attrs.match(/rule=["']([^"']*)["']/i)?.[1];
+  if (!roadMatch) return undefined;
 
-    const speedMatch = xodrStr.match(/<speed\s+max=["']([^"']*)["']/i);
-    const speedMax = speedMatch ? parseFloat(speedMatch[1]) : undefined;
+  const attrs = roadMatch[1];
+  const id = attrs.match(/id=["']([^"']*)["']/i)?.[1];
+  const name = attrs.match(/name=["']([^"']*)["']/i)?.[1];
+  const length = parseFloat(attrs.match(/length=["']([^"']*)["']/i)?.[1] || '0');
+  const rule = attrs.match(/rule=["']([^"']*)["']/i)?.[1];
 
-    const laneMatches = xodrStr.match(/<lane\s+id=/gi);
-    const laneCount = laneMatches ? laneMatches.length : undefined;
+  const speedMatch = xodrStr.match(/<speed\s+max=["']([^"']*)["']/i);
+  const speedMax = speedMatch ? parseFloat(speedMatch[1]) : undefined;
 
-    roadInfo = { id, name, length, speedMax, rule, laneCount };
-  }
+  const laneMatches = xodrStr.match(/<lane\s+id=/gi);
+  const laneCount = laneMatches ? laneMatches.length : undefined;
 
-  // 4. Vehicles
+  return { id, name, length, speedMax, rule, laneCount };
+}
+
+function extractVehicles(xoscStr: string): ScenarioVehicleMetadata[] {
   const vehicles: ScenarioVehicleMetadata[] = [];
   const objRegex = /<ScenarioObject\s+name=["']([^"']+)["'][\s\S]*?<Vehicle\s+name=["']([^"']*)["']\s+vehicleCategory=["']([^"']*)["']/gi;
   let vMatch;
@@ -379,28 +389,121 @@ function parseScenarioMetadata(xoscContent: string | ArrayBuffer, xodrContent: s
       category: vMatch[3] || 'car',
     });
   }
+  return vehicles;
+}
 
-  // 5. Environment
-  let env: ScenarioEnvironmentMetadata | undefined;
-  const sunAzMatch = xoscStr.match(/sun_azimuth.*?value=["']([\d\.-]+)["']/i);
-  const sunElMatch = xoscStr.match(/sun_elevation.*?value=["']([\d\.-]+)["']/i);
-  const sunIntMatch = xoscStr.match(/sun_intensity.*?value=["']([\d\.-]+)["']/i);
-  const windMatch = xoscStr.match(/wind_speed.*?value=["']([\d\.-]+)["']/i);
-  if (sunAzMatch || sunElMatch || sunIntMatch || windMatch) {
-    env = {
-      sunAzimuth: sunAzMatch ? parseFloat(sunAzMatch[1]) : undefined,
-      sunElevation: sunElMatch ? parseFloat(sunElMatch[1]) : undefined,
-      sunIntensity: sunIntMatch ? parseFloat(sunIntMatch[1]) : undefined,
-      windSpeed: windMatch ? parseFloat(windMatch[1]) : undefined,
-    };
+function extractEnvironment(xoscStr: string, params: ScenarioParameterMetadata[]): ScenarioEnvironmentMetadata | undefined {
+  const sunMatch = xoscStr.match(/<Sun\s+([^>]+)\/?>/i);
+  const sunAttrs = sunMatch ? sunMatch[1] : '';
+  const sunAz = parseFloat(sunAttrs.match(/azimuth=["']([\d\.-]+)["']/i)?.[1] || '') ||
+    parseFloat(xoscStr.match(/sun_azimuth.*?value=["']([\d\.-]+)["']/i)?.[1] || '');
+  const sunEl = parseFloat(sunAttrs.match(/elevation=["']([\d\.-]+)["']/i)?.[1] || '') ||
+    parseFloat(xoscStr.match(/sun_elevation.*?value=["']([\d\.-]+)["']/i)?.[1] || '');
+  const sunInt = parseFloat(sunAttrs.match(/intensity=["']([\d\.-]+)["']/i)?.[1] || '') ||
+    parseFloat(xoscStr.match(/sun_intensity.*?value=["']([\d\.-]+)["']/i)?.[1] || '') ||
+    parseFloat(params.find((p) => /sun.*intensity/i.test(p.name))?.value || '');
+
+  const fogMatch = xoscStr.match(/<Fog\s+([^>]+)\/?>/i);
+  const fogRange = parseFloat(fogMatch?.[1].match(/visualRange=["']([\d\.-]+)["']/i)?.[1] || '') ||
+    parseFloat(params.find((p) => /fog|visual_?range/i.test(p.name))?.value || '');
+
+  const precipMatch = xoscStr.match(/<Precipitation\s+([^>]+)\/?>/i);
+  const precipType = precipMatch?.[1].match(/precipitationType=["']([^"']+)["']/i)?.[1] ||
+    params.find((p) => /precip.*type/i.test(p.name))?.value;
+  const precipInt = parseFloat(precipMatch?.[1].match(/intensity=["']([\d\.-]+)["']/i)?.[1] || '') ||
+    parseFloat(params.find((p) => /precip.*intensity|snow.*intensity|rain.*intensity/i.test(p.name))?.value || '');
+
+  const weatherMatch = xoscStr.match(/<Weather\s+([^>]+)>/i);
+  const cloudState = weatherMatch?.[1].match(/cloudState=["']([^"']+)["']/i)?.[1];
+
+  const windMatch = xoscStr.match(/<Wind\s+([^>]+)\/?>/i);
+  const windSpeed = parseFloat(windMatch?.[1].match(/speed=["']([\d\.-]+)["']/i)?.[1] || '') ||
+    parseFloat(xoscStr.match(/wind_speed.*?value=["']([\d\.-]+)["']/i)?.[1] || '') ||
+    parseFloat(params.find((p) => /wind.*speed/i.test(p.name))?.value || '');
+  const windDir = parseFloat(windMatch?.[1].match(/direction=["']([\d\.-]+)["']/i)?.[1] || '');
+
+  const tempMatch = xoscStr.match(/<Temperature\s+([^>]+)\/?>/i);
+  const temperature = parseFloat(tempMatch?.[1].match(/value=["']([\d\.-]+)["']/i)?.[1] || '') ||
+    parseFloat(params.find((p) => /temperature|ambient_temp/i.test(p.name))?.value || '');
+
+  const roadCondMatch = xoscStr.match(/<RoadCondition\s+([^>]+)\/?>/i);
+  const friction = parseFloat(roadCondMatch?.[1].match(/frictionScaleFactor=["']([\d\.-]+)["']/i)?.[1] || '') ||
+    parseFloat(params.find((p) => /friction/i.test(p.name))?.value || '');
+
+  const timeMatch = xoscStr.match(/<TimeOfDay\s+([^>]+)\/?>/i);
+  const dateTime = timeMatch?.[1].match(/dateTime=["']([^"']+)["']/i)?.[1];
+
+  const hasEnv = !isNaN(sunAz) || !isNaN(sunEl) || !isNaN(sunInt) || !isNaN(fogRange) ||
+    !isNaN(windSpeed) || !isNaN(temperature) || !isNaN(friction) || precipType || cloudState;
+
+  if (!hasEnv) return undefined;
+
+  return {
+    sunAzimuth: isNaN(sunAz) ? undefined : sunAz,
+    sunElevation: isNaN(sunEl) ? undefined : sunEl,
+    sunIntensity: isNaN(sunInt) ? undefined : sunInt,
+    fogVisualRange: isNaN(fogRange) ? undefined : fogRange,
+    precipitationType: precipType,
+    precipitationIntensity: isNaN(precipInt) ? undefined : precipInt,
+    cloudState,
+    windSpeed: isNaN(windSpeed) ? undefined : windSpeed,
+    windDirection: isNaN(windDir) ? undefined : windDir,
+    temperature: isNaN(temperature) ? undefined : temperature,
+    friction: isNaN(friction) ? undefined : friction,
+    dateTime,
+  };
+}
+
+function extractBehavior(xoscStr: string): ScenarioBehaviorMetadata | undefined {
+  const stories = Array.from(xoscStr.matchAll(/<Story\s+name=["']([^"']+)["']/gi), (m) => m[1]);
+  const acts = Array.from(xoscStr.matchAll(/<Act\s+name=["']([^"']+)["']/gi), (m) => m[1]);
+  const maneuvers = Array.from(xoscStr.matchAll(/<Maneuver\s+name=["']([^"']+)["']/gi), (m) => m[1]);
+  const events = Array.from(xoscStr.matchAll(/<Event\s+name=["']([^"']+)["']/gi), (m) => m[1]);
+
+  const actionMatches = Array.from(
+    xoscStr.matchAll(/<(LaneChangeAction|SpeedAction|TeleportAction|RoutingAction|FollowTrajectoryAction|SynchronizeAction|LongitudinalDistanceAction)/gi),
+    (m) => m[1]
+  );
+  const uniqueActions = Array.from(new Set(actionMatches));
+
+  const triggerMatches = Array.from(
+    xoscStr.matchAll(/<(SimulationTimeCondition|RelativeDistanceCondition|ReachPositionCondition|TimeHeadwayCondition|TimeToCollisionCondition|StandStillCondition)/gi),
+    (m) => m[1]
+  );
+  const uniqueTriggers = Array.from(new Set(triggerMatches));
+
+  if (stories.length === 0 && acts.length === 0 && maneuvers.length === 0 && uniqueActions.length === 0) {
+    return undefined;
   }
+
+  return {
+    stories: stories.length > 0 ? stories : undefined,
+    acts: acts.length > 0 ? acts : undefined,
+    maneuvers: maneuvers.length > 0 ? maneuvers : undefined,
+    events: events.length > 0 ? events : undefined,
+    actions: uniqueActions.length > 0 ? uniqueActions : undefined,
+    startTriggers: uniqueTriggers.length > 0 ? uniqueTriggers : undefined,
+  };
+}
+
+function parseScenarioMetadata(xoscContent: string | ArrayBuffer, xodrContent: string | ArrayBuffer): ScenarioMetadata {
+  const xoscStr = typeof xoscContent === 'string' ? xoscContent : new TextDecoder().decode(xoscContent);
+  const xodrStr = typeof xodrContent === 'string' ? xodrContent : new TextDecoder().decode(xodrContent);
+
+  const fileHeader = extractFileHeader(xoscStr);
+  const parameters = extractParameters(xoscStr);
+  const roadInfo = extractRoadInfo(xodrStr);
+  const vehicles = extractVehicles(xoscStr);
+  const environment = extractEnvironment(xoscStr, parameters);
+  const behavior = extractBehavior(xoscStr);
 
   return {
     fileHeader,
     parameters: parameters.length > 0 ? parameters : undefined,
     roadInfo,
     vehicles: vehicles.length > 0 ? vehicles : undefined,
-    environment: env,
+    environment,
+    behavior,
   };
 }
 
@@ -426,7 +529,6 @@ async function loadScenario(payload: LoadScenarioPayload) {
     const xoscContent = payload.xoscFile.content;
     const xodrContent = payload.xodrFile.content;
 
-    totalDuration = parseDurationFromXosc(xoscContent);
     const metadata = parseScenarioMetadata(xoscContent, xodrContent);
 
     const xoscName = payload.xoscFile.name.replace(/\\/g, '/').split('/').pop() || 'scenario.xosc';
@@ -460,7 +562,7 @@ async function loadScenario(payload: LoadScenarioPayload) {
       max_loop: 0,
       min_time_step: 0,
       max_time_step: 0,
-      dt: FIXED_DT,
+      dt: FIXED_SIMULATION_DT,
     });
 
     const rawRoadGeom = currentScenario.get_road_geometry();
@@ -473,7 +575,29 @@ async function loadScenario(payload: LoadScenarioPayload) {
     frameHistory = [initialFrame];
     currentHistoryIndex = 0;
 
-    postLog('info', `Scenario loaded: ${roadGeometry.lane_surfaces.length} lanes, expected duration: ${totalDuration}s`);
+    let stepCount = 0;
+    while (currentScenario && !currentScenario.is_quit() && stepCount < MAX_PRE_SIMULATION_STEPS) {
+      const rawF = currentScenario.step_frame(FIXED_SIMULATION_DT);
+      const frame = convertFrame(rawF);
+      frameHistory.push(frame);
+      stepCount++;
+      if (frame.quit || currentScenario.is_quit()) {
+        break;
+      }
+    }
+
+    const lastFrame = frameHistory[frameHistory.length - 1];
+    if (lastFrame && lastFrame.simulation_time > 0) {
+      totalDuration = lastFrame.simulation_time;
+    } else {
+      totalDuration = parseDurationFromXosc(xoscContent);
+    }
+    totalDuration = Math.max(MIN_SCENARIO_DURATION_SECONDS, totalDuration);
+
+    postLog(
+      'info',
+      `Scenario loaded: ${roadGeometry.lane_surfaces.length} lanes, duration: ${totalDuration.toFixed(2)}s (${frameHistory.length} frames)`
+    );
 
     postMsg({
       type: 'SCENARIO_LOADED',
@@ -490,15 +614,13 @@ async function loadScenario(payload: LoadScenarioPayload) {
   }
 }
 
-function stepForward() {
-  if (!currentScenario) return;
+function stepFramePlayback() {
+  if (!currentScenario || frameHistory.length === 0) return;
 
-  // If browsing cached history
   if (currentHistoryIndex < frameHistory.length - 1) {
     currentHistoryIndex++;
     const frame = frameHistory[currentHistoryIndex];
-    const atEnd = currentHistoryIndex >= frameHistory.length - 1;
-    const isCompleted = atEnd && (frame.quit || currentScenario.is_quit());
+    const isCompleted = currentHistoryIndex >= frameHistory.length - 1;
 
     if (isCompleted && isPlaying) {
       pausePlayback();
@@ -513,86 +635,29 @@ function stepForward() {
         isCompleted,
       },
     });
-    return;
-  }
-
-  // If already quit at end
-  if (currentScenario.is_quit()) {
-    if (isPlaying) {
-      pausePlayback();
-    }
-    const lastFrame = frameHistory[currentHistoryIndex] || frameHistory[0];
-    totalDuration = lastFrame.simulation_time;
-    postMsg({
-      type: 'FRAME',
-      payload: {
-        frame: lastFrame,
-        simulationTime: lastFrame.simulation_time,
-        duration: totalDuration,
-        isCompleted: true,
-      },
-    });
-    return;
-  }
-
-  // Simulate next step from C++ engine
-  try {
-    const rawFrame = currentScenario.step_frame(FIXED_DT);
-    const frame = convertFrame(rawFrame);
-    frameHistory.push(frame);
-    currentHistoryIndex = frameHistory.length - 1;
-
-    const isCompleted = frame.quit || currentScenario.is_quit();
-    if (isCompleted) {
-      totalDuration = frame.simulation_time;
-      if (isPlaying) {
-        pausePlayback();
-      }
-    } else {
-      totalDuration = Math.max(totalDuration, frame.simulation_time);
-    }
-
-    postMsg({
-      type: 'FRAME',
-      payload: {
-        frame,
-        simulationTime: frame.simulation_time,
-        duration: totalDuration,
-        isCompleted,
-      },
-    });
-  } catch (err: any) {
+  } else {
     pausePlayback();
-    postError('Error during simulation step', err?.message || String(err));
   }
 }
 
-function stepBackward() {
-  if (!currentScenario || currentHistoryIndex <= 0) return;
+function stepForward(stepSeconds: number = DEFAULT_STEP_INTERVAL_SECONDS) {
+  if (!currentScenario || frameHistory.length === 0) return;
 
-  currentHistoryIndex--;
-  const frame = frameHistory[currentHistoryIndex];
+  const currentFrame = frameHistory[currentHistoryIndex] || frameHistory[0];
+  const currentTime = currentFrame ? currentFrame.simulation_time : 0;
+  const targetTime = currentTime + stepSeconds;
 
-  postMsg({
-    type: 'FRAME',
-    payload: {
-      frame,
-      simulationTime: frame.simulation_time,
-      duration: totalDuration,
-      isCompleted: false,
-    },
-  });
+  seekToTime(targetTime);
+}
 
-  postMsg({
-    type: 'PLAYBACK_STATE',
-    payload: {
-      isPlaying: false,
-      simulationTime: frame.simulation_time,
-      duration: totalDuration,
-      isCompleted: false,
-      speed: playbackSpeed,
-    },
-  });
+function stepBackward(stepSeconds: number = DEFAULT_STEP_INTERVAL_SECONDS) {
+  if (!currentScenario || frameHistory.length === 0) return;
+
+  const currentFrame = frameHistory[currentHistoryIndex] || frameHistory[0];
+  const currentTime = currentFrame ? currentFrame.simulation_time : 0;
+  const targetTime = Math.max(0, currentTime - stepSeconds);
+
+  seekToTime(targetTime);
 }
 
 function seekToTime(targetTime: number) {
@@ -600,7 +665,6 @@ function seekToTime(targetTime: number) {
 
   const clampedTime = Math.max(0, Math.min(totalDuration, targetTime));
 
-  // Find closest frame in cached history
   let bestIndex = 0;
   let minDiff = Math.abs(frameHistory[0].simulation_time - clampedTime);
 
@@ -612,30 +676,10 @@ function seekToTime(targetTime: number) {
     }
   }
 
-  if (clampedTime <= frameHistory[frameHistory.length - 1].simulation_time) {
-    currentHistoryIndex = bestIndex;
-  } else {
-    // Step forward until reaching target time or completion
-    let steps = 0;
-    while (currentScenario && !currentScenario.is_quit() && steps < 500) {
-      const rawFrame = currentScenario.step_frame(FIXED_DT);
-      const frame = convertFrame(rawFrame);
-      frameHistory.push(frame);
-      currentHistoryIndex = frameHistory.length - 1;
-      steps++;
-
-      if (frame.simulation_time >= clampedTime || frame.quit) {
-        if (frame.quit) {
-          totalDuration = frame.simulation_time;
-        }
-        break;
-      }
-    }
-  }
-
+  currentHistoryIndex = bestIndex;
   const currentFrame = frameHistory[currentHistoryIndex];
   const atEnd = currentHistoryIndex >= frameHistory.length - 1;
-  const isCompleted = atEnd && (currentFrame.quit || currentScenario.is_quit());
+  const isCompleted = atEnd && (Boolean(currentFrame?.quit) || currentScenario.is_quit());
 
   postMsg({
     type: 'FRAME',
@@ -662,7 +706,6 @@ function seekToTime(targetTime: number) {
 function startPlayback() {
   if (isPlaying || !currentScenario) return;
 
-  // If at the end of scenario, restart from beginning
   const isAtEnd =
     currentHistoryIndex >= frameHistory.length - 1 &&
     (Boolean(frameHistory[currentHistoryIndex]?.quit) || currentScenario.is_quit());
@@ -682,10 +725,13 @@ function startPlayback() {
   }
 
   isPlaying = true;
-  const intervalMs = Math.max(10, Math.round(BASE_INTERVAL_MS / playbackSpeed));
+  const intervalMs = Math.max(
+    MIN_PLAYBACK_INTERVAL_MS,
+    Math.round(BASE_PLAYBACK_INTERVAL_MS / playbackSpeed)
+  );
 
   simulationIntervalId = setInterval(() => {
-    stepForward();
+    stepFramePlayback();
   }, intervalMs);
 
   postMsg({
@@ -758,14 +804,17 @@ function stopPlayback() {
 }
 
 function setSpeed(speed: number) {
-  playbackSpeed = Math.max(0.25, Math.min(8.0, speed));
+  playbackSpeed = Math.max(MIN_PLAYBACK_SPEED, Math.min(MAX_PLAYBACK_SPEED, speed));
   if (isPlaying) {
     if (simulationIntervalId) {
       clearInterval(simulationIntervalId);
     }
-    const intervalMs = Math.max(10, Math.round(BASE_INTERVAL_MS / playbackSpeed));
+    const intervalMs = Math.max(
+      MIN_PLAYBACK_INTERVAL_MS,
+      Math.round(BASE_PLAYBACK_INTERVAL_MS / playbackSpeed)
+    );
     simulationIntervalId = setInterval(() => {
-      stepForward();
+      stepFramePlayback();
     }, intervalMs);
   }
 
@@ -787,7 +836,6 @@ function setSpeed(speed: number) {
 }
 
 self.onmessage = (event: MessageEvent<MainToWorkerMessage>) => {
-  // Origin verification for worker message event handler
   if (event.origin && self.location && event.origin !== self.location.origin) {
     console.warn(`[simulation.worker] Ignored message from unauthorized origin: ${event.origin}`);
     return;
@@ -816,11 +864,11 @@ self.onmessage = (event: MessageEvent<MainToWorkerMessage>) => {
       break;
     case 'STEP_FORWARD':
       pausePlayback();
-      stepForward();
+      stepForward(msg.payload?.stepSeconds ?? DEFAULT_STEP_INTERVAL_SECONDS);
       break;
     case 'STEP_BACKWARD':
       pausePlayback();
-      stepBackward();
+      stepBackward(msg.payload?.stepSeconds ?? DEFAULT_STEP_INTERVAL_SECONDS);
       break;
     case 'SEEK':
       seekToTime(msg.payload.targetTime);

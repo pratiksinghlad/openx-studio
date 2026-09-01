@@ -29,10 +29,15 @@ import {
   TooltipTrigger,
 } from './ui/tooltip';
 import { cn } from '../lib/utils';
+import {
+  DEFAULT_STEP_INTERVAL_SECONDS,
+  PLAYBACK_SPEEDS,
+  MIN_SCENARIO_DURATION_SECONDS,
+  FALLBACK_SCENARIO_DURATION_SECONDS,
+  formatTime,
+} from '../constants/playback';
 
-export const PLAYBACK_SPEEDS = [0.5, 1.0, 2.0, 4.0] as const;
-const MIN_DURATION = 0.1;
-const FALLBACK_DURATION = 10.0;
+export { PLAYBACK_SPEEDS, formatTime };
 
 const CAMERA_BUTTON_CONFIG = [
   { mode: CAMERA_MODES.ORBIT, label: '3D', icon: Eye, tooltip: "Orbit 3D Camera (Reset to Bird's-Eye)" },
@@ -51,6 +56,7 @@ export interface PlayerControlsProps {
   isFullscreen: boolean;
   zoomPercent: number;
   angleDeg: number;
+  stepIntervalSeconds?: number;
   isRecording?: boolean;
   recordedDuration?: number;
   onPlay: () => void;
@@ -66,13 +72,6 @@ export interface PlayerControlsProps {
   onZoomOut: () => void;
   onAngleReset: () => void;
   onToggleRecord?: () => void;
-}
-
-export function formatTime(seconds: number): string {
-  const s = Math.max(0, seconds);
-  const mins = Math.floor(s / 60);
-  const secs = (s % 60).toFixed(2);
-  return `${mins.toString().padStart(2, '0')}:${secs.padStart(5, '0')}s`;
 }
 
 interface PlayPauseButtonProps {
@@ -128,6 +127,7 @@ function PlayPauseButton({
 interface PlaybackButtonGroupProps {
   isPlaying: boolean;
   isCompleted: boolean;
+  stepIntervalSeconds: number;
   onPlay: () => void;
   onPause: () => void;
   onStop: () => void;
@@ -138,6 +138,7 @@ interface PlaybackButtonGroupProps {
 function PlaybackButtonGroup({
   isPlaying,
   isCompleted,
+  stepIntervalSeconds,
   onPlay,
   onPause,
   onStop,
@@ -153,12 +154,12 @@ function PlaybackButtonGroup({
             size="icon"
             className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/80 active:scale-95 transition-all"
             onClick={onStepBackward}
-            aria-label="Step Backward"
+            aria-label={`Step Backward ${stepIntervalSeconds}s`}
           >
             <SkipBack className="h-4 w-4" />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>Step Backward (0.05s)</TooltipContent>
+        <TooltipContent>{`Step Backward (${stepIntervalSeconds}s)`}</TooltipContent>
       </Tooltip>
 
       <PlayPauseButton
@@ -190,12 +191,12 @@ function PlaybackButtonGroup({
             size="icon"
             className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/80 active:scale-95 transition-all"
             onClick={onStepForward}
-            aria-label="Step Forward"
+            aria-label={`Step Forward ${stepIntervalSeconds}s`}
           >
             <SkipForward className="h-4 w-4" />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>Step Forward (0.05s)</TooltipContent>
+        <TooltipContent>{`Step Forward (${stepIntervalSeconds}s)`}</TooltipContent>
       </Tooltip>
     </div>
   );
@@ -533,6 +534,7 @@ export const PlayerControls: React.FC<PlayerControlsProps> = (props) => {
     isFullscreen,
     zoomPercent,
     angleDeg,
+    stepIntervalSeconds = DEFAULT_STEP_INTERVAL_SECONDS,
     isRecording,
     recordedDuration,
     onPlay,
@@ -552,7 +554,7 @@ export const PlayerControls: React.FC<PlayerControlsProps> = (props) => {
 
   if (!isLoaded) return null;
 
-  const effectiveDuration = Math.max(MIN_DURATION, duration || FALLBACK_DURATION);
+  const effectiveDuration = Math.max(MIN_SCENARIO_DURATION_SECONDS, duration || FALLBACK_SCENARIO_DURATION_SECONDS);
   const effectiveValue = isCompleted
     ? effectiveDuration
     : Math.min(simulationTime, effectiveDuration);
@@ -575,6 +577,7 @@ export const PlayerControls: React.FC<PlayerControlsProps> = (props) => {
               <PlaybackButtonGroup
                 isPlaying={isPlaying}
                 isCompleted={isCompleted}
+                stepIntervalSeconds={stepIntervalSeconds}
                 onPlay={onPlay}
                 onPause={onPause}
                 onStop={onStop}
