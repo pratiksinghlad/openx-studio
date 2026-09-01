@@ -28,6 +28,7 @@ import {
   Download,
 } from 'lucide-react';
 import { usePWAInstall } from './hooks/usePWAInstall';
+import { usePlayerKeyboardShortcuts } from './hooks/usePlayerKeyboardShortcuts';
 import { InstallModal } from './components/InstallModal';
 import { cn } from './lib/utils';
 import { DEFAULT_STEP_INTERVAL_SECONDS } from './constants/playback';
@@ -359,6 +360,27 @@ export function App() {
     await promptInstall();
     setShowInstallModal(false);
   }, [promptInstall]);
+
+  usePlayerKeyboardShortcuts({
+    isLoaded,
+    isPlaying,
+    isCompleted,
+    currentSpeed: speed,
+    currentCameraMode: cameraMode,
+    disabled: showUploadModal || showInstallModal || showInspector || isAbout,
+    onPlay: handlePlay,
+    onPause: handlePause,
+    onStop: handleStop,
+    onStepForward: handleStepForward,
+    onStepBackward: handleStepBackward,
+    onSpeedChange: handleSpeedChange,
+    onToggleFullscreen: handleToggleFullscreen,
+    onToggleRecord: handleToggleRecord,
+    onCameraModeChange: handleCameraModeChange,
+    onZoomIn: handleZoomIn,
+    onZoomOut: handleZoomOut,
+    onAngleReset: handleAngleReset,
+  });
 
   if (isAbout) {
     return (

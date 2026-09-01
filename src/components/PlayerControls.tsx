@@ -22,12 +22,8 @@ import { CameraMode, CAMERA_MODES } from '../renderer/types';
 import { Slider } from './ui/slider';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from './ui/tooltip';
+import { TooltipProvider } from './ui/tooltip';
+import { ShortcutTooltip } from './ui/ShortcutTooltip';
 import { cn } from '../lib/utils';
 import {
   DEFAULT_STEP_INTERVAL_SECONDS,
@@ -36,6 +32,7 @@ import {
   FALLBACK_SCENARIO_DURATION_SECONDS,
   formatTime,
 } from '../constants/playback';
+import { PLAYER_SHORTCUTS } from '../constants/shortcuts';
 
 export { PLAYBACK_SPEEDS, formatTime };
 
@@ -95,32 +92,32 @@ function PlayPauseButton({
     <Play className="h-4 w-4 fill-current ml-0.5" />
   );
 
-  const tooltipText = isPlaying
+  const tooltipLabel = isPlaying
     ? 'Pause'
     : isCompleted
     ? 'Replay Scenario from Start'
     : 'Play / Resume';
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          variant="default"
-          size="icon"
-          className={cn(
-            'h-8.5 w-8.5 rounded-xl shadow-md text-primary-foreground active:scale-95 transition-all',
-            isCompleted
-              ? 'bg-emerald-600 hover:bg-emerald-500 text-white ring-2 ring-emerald-500/30'
-              : 'bg-primary hover:bg-primary/90'
-          )}
-          onClick={isPlaying ? onPause : onPlay}
-          aria-label={isPlaying ? 'Pause' : isCompleted ? 'Replay Scenario' : 'Play'}
-        >
-          {icon}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{tooltipText}</TooltipContent>
-    </Tooltip>
+    <ShortcutTooltip
+      label={tooltipLabel}
+      shortcuts={PLAYER_SHORTCUTS.TOGGLE_PLAY.displayKeys}
+    >
+      <Button
+        variant="default"
+        size="icon"
+        className={cn(
+          'h-8.5 w-8.5 rounded-xl shadow-md text-primary-foreground active:scale-95 transition-all',
+          isCompleted
+            ? 'bg-emerald-600 hover:bg-emerald-500 text-white ring-2 ring-emerald-500/30'
+            : 'bg-primary hover:bg-primary/90'
+        )}
+        onClick={isPlaying ? onPause : onPlay}
+        aria-label={isPlaying ? 'Pause' : isCompleted ? 'Replay Scenario' : 'Play'}
+      >
+        {icon}
+      </Button>
+    </ShortcutTooltip>
   );
 }
 
@@ -147,20 +144,20 @@ function PlaybackButtonGroup({
 }: PlaybackButtonGroupProps) {
   return (
     <div className="flex items-center gap-0.5 shrink-0">
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/80 active:scale-95 transition-all"
-            onClick={onStepBackward}
-            aria-label={`Step Backward ${stepIntervalSeconds}s`}
-          >
-            <SkipBack className="h-4 w-4" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{`Step Backward (${stepIntervalSeconds}s)`}</TooltipContent>
-      </Tooltip>
+      <ShortcutTooltip
+        label={`Step Backward (${stepIntervalSeconds}s)`}
+        shortcuts={PLAYER_SHORTCUTS.STEP_BACKWARD.displayKeys}
+      >
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/80 active:scale-95 transition-all"
+          onClick={onStepBackward}
+          aria-label={`Step Backward ${stepIntervalSeconds}s`}
+        >
+          <SkipBack className="h-4 w-4" />
+        </Button>
+      </ShortcutTooltip>
 
       <PlayPauseButton
         isPlaying={isPlaying}
@@ -169,35 +166,35 @@ function PlaybackButtonGroup({
         onPause={onPause}
       />
 
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/80 active:scale-95 transition-all"
-            onClick={onStop}
-            aria-label="Stop / Reset"
-          >
-            <Square className="h-3.5 w-3.5" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Stop / Reset to Start</TooltipContent>
-      </Tooltip>
+      <ShortcutTooltip
+        label="Stop / Reset to Start"
+        shortcuts={PLAYER_SHORTCUTS.STOP.displayKeys}
+      >
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/80 active:scale-95 transition-all"
+          onClick={onStop}
+          aria-label="Stop / Reset"
+        >
+          <Square className="h-3.5 w-3.5" />
+        </Button>
+      </ShortcutTooltip>
 
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/80 active:scale-95 transition-all"
-            onClick={onStepForward}
-            aria-label={`Step Forward ${stepIntervalSeconds}s`}
-          >
-            <SkipForward className="h-4 w-4" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{`Step Forward (${stepIntervalSeconds}s)`}</TooltipContent>
-      </Tooltip>
+      <ShortcutTooltip
+        label={`Step Forward (${stepIntervalSeconds}s)`}
+        shortcuts={PLAYER_SHORTCUTS.STEP_FORWARD.displayKeys}
+      >
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/80 active:scale-95 transition-all"
+          onClick={onStepForward}
+          aria-label={`Step Forward ${stepIntervalSeconds}s`}
+        >
+          <SkipForward className="h-4 w-4" />
+        </Button>
+      </ShortcutTooltip>
     </div>
   );
 }
@@ -268,24 +265,32 @@ interface SpeedSelectorProps {
 
 function SpeedSelector({ speed, onSpeedChange }: SpeedSelectorProps) {
   return (
-    <div className="flex items-center bg-muted/60 dark:bg-muted/40 p-0.5 rounded-lg border border-border/40 shrink-0 shadow-inner">
-      {PLAYBACK_SPEEDS.map((s) => (
-        <button
-          key={s}
-          type="button"
-          onClick={() => onSpeedChange(s)}
-          className={cn(
-            'px-2 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer select-none active:scale-95',
-            speed === s
-              ? 'bg-background text-foreground shadow-sm font-bold border border-border/40'
-              : 'text-muted-foreground hover:text-foreground hover:bg-background/40'
-          )}
-          title={`Playback speed ${s}x`}
-        >
-          {s}x
-        </button>
-      ))}
-    </div>
+    <ShortcutTooltip
+      label="Playback Speed"
+      shortcuts={[
+        ...PLAYER_SHORTCUTS.SPEED_DECREASE.displayKeys,
+        ...PLAYER_SHORTCUTS.SPEED_INCREASE.displayKeys,
+      ]}
+    >
+      <div className="flex items-center bg-muted/60 dark:bg-muted/40 p-0.5 rounded-lg border border-border/40 shrink-0 shadow-inner">
+        {PLAYBACK_SPEEDS.map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => onSpeedChange(s)}
+            className={cn(
+              'px-2 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer select-none active:scale-95',
+              speed === s
+                ? 'bg-background text-foreground shadow-sm font-bold border border-border/40'
+                : 'text-muted-foreground hover:text-foreground hover:bg-background/40'
+            )}
+            aria-label={`Playback speed ${s}x`}
+          >
+            {s}x
+          </button>
+        ))}
+      </div>
+    </ShortcutTooltip>
   );
 }
 
@@ -298,20 +303,21 @@ function CameraControls({ cameraMode, onCameraModeChange }: CameraControlsProps)
   return (
     <div className="flex items-center gap-1 shrink-0">
       {CAMERA_BUTTON_CONFIG.map(({ mode, label, icon: Icon, tooltip }) => (
-        <Tooltip key={mode}>
-          <TooltipTrigger asChild>
-            <Button
-              variant={cameraMode === mode ? 'hud-active' : 'outline'}
-              size="sm"
-              onClick={() => onCameraModeChange(mode)}
-              className="gap-1.5 h-8 text-xs px-2.5 active:scale-95 transition-all"
-            >
-              <Icon className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{label}</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{tooltip}</TooltipContent>
-        </Tooltip>
+        <ShortcutTooltip
+          key={mode}
+          label={tooltip}
+          shortcuts={PLAYER_SHORTCUTS.CYCLE_CAMERA.displayKeys}
+        >
+          <Button
+            variant={cameraMode === mode ? 'hud-active' : 'outline'}
+            size="sm"
+            onClick={() => onCameraModeChange(mode)}
+            className="gap-1.5 h-8 text-xs px-2.5 active:scale-95 transition-all"
+          >
+            <Icon className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{label}</span>
+          </Button>
+        </ShortcutTooltip>
       ))}
     </div>
   );
@@ -326,35 +332,35 @@ interface ZoomSteppersProps {
 function ZoomSteppers({ zoomPercent, onZoomIn, onZoomOut }: ZoomSteppersProps) {
   return (
     <div className="flex items-center bg-muted/60 dark:bg-muted/40 rounded-lg border border-border/40 shrink-0 shadow-inner">
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            onClick={onZoomOut}
-            className="px-2 py-1.5 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-colors cursor-pointer rounded-l-lg active:scale-95"
-            aria-label="Zoom Out"
-          >
-            <Minus className="h-3.5 w-3.5" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent>Zoom Out (−10%)</TooltipContent>
-      </Tooltip>
+      <ShortcutTooltip
+        label="Zoom Out (−10%)"
+        shortcuts={PLAYER_SHORTCUTS.ZOOM_OUT.displayKeys}
+      >
+        <button
+          type="button"
+          onClick={onZoomOut}
+          className="px-2 py-1.5 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-colors cursor-pointer rounded-l-lg active:scale-95"
+          aria-label="Zoom Out"
+        >
+          <Minus className="h-3.5 w-3.5" />
+        </button>
+      </ShortcutTooltip>
       <span className="font-mono text-xs font-semibold text-foreground min-w-[3ch] text-center px-1 select-none">
         {zoomPercent}%
       </span>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            onClick={onZoomIn}
-            className="px-2 py-1.5 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-colors cursor-pointer rounded-r-lg active:scale-95"
-            aria-label="Zoom In"
-          >
-            <Plus className="h-3.5 w-3.5" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent>Zoom In (+10%)</TooltipContent>
-      </Tooltip>
+      <ShortcutTooltip
+        label="Zoom In (+10%)"
+        shortcuts={PLAYER_SHORTCUTS.ZOOM_IN.displayKeys}
+      >
+        <button
+          type="button"
+          onClick={onZoomIn}
+          className="px-2 py-1.5 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-colors cursor-pointer rounded-r-lg active:scale-95"
+          aria-label="Zoom In"
+        >
+          <Plus className="h-3.5 w-3.5" />
+        </button>
+      </ShortcutTooltip>
     </div>
   );
 }
@@ -366,22 +372,22 @@ interface AngleResetButtonProps {
 
 function AngleResetButton({ angleDeg, onAngleReset }: AngleResetButtonProps) {
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          onClick={onAngleReset}
-          className="flex items-center gap-1.5 bg-muted/60 dark:bg-muted/40 rounded-lg border border-border/40 px-2.5 py-1.5 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-colors cursor-pointer active:scale-95 shadow-inner"
-          aria-label="Reset Camera Angle"
-        >
-          <RotateCw className="h-3.5 w-3.5" />
-          <span className="font-mono text-xs font-semibold text-foreground min-w-[2ch] text-center select-none">
-            {angleDeg}°
-          </span>
-        </button>
-      </TooltipTrigger>
-      <TooltipContent>Reset Camera Angle to 0°</TooltipContent>
-    </Tooltip>
+    <ShortcutTooltip
+      label="Reset Camera Angle to 0°"
+      shortcuts={PLAYER_SHORTCUTS.RESET_CAMERA_ANGLE.displayKeys}
+    >
+      <button
+        type="button"
+        onClick={onAngleReset}
+        className="flex items-center gap-1.5 bg-muted/60 dark:bg-muted/40 rounded-lg border border-border/40 px-2.5 py-1.5 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-colors cursor-pointer active:scale-95 shadow-inner"
+        aria-label="Reset Camera Angle"
+      >
+        <RotateCw className="h-3.5 w-3.5" />
+        <span className="font-mono text-xs font-semibold text-foreground min-w-[2ch] text-center select-none">
+          {angleDeg}°
+        </span>
+      </button>
+    </ShortcutTooltip>
   );
 }
 
@@ -421,46 +427,46 @@ function VideoDownloadButton({
 }: VideoDownloadButtonProps) {
   if (!onToggleRecord) return null;
 
-  const tooltipText = isRecording
+  const tooltipLabel = isRecording
     ? `Recording (${recordedDuration.toFixed(1)}s)... Click to Stop & Download MP4`
     : 'Download Scenario as MP4 Video';
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          variant={isRecording ? 'destructive' : 'outline'}
-          size="sm"
-          onClick={onToggleRecord}
-          className={cn(
-            'gap-1.5 h-8.5 px-3 text-xs font-semibold rounded-lg active:scale-95 transition-all shadow-xs shrink-0 cursor-pointer',
-            isRecording
-              ? 'bg-red-600 hover:bg-red-500 text-white animate-pulse border-red-500 ring-2 ring-red-500/30'
-              : 'border-primary/40 bg-primary/5 hover:bg-primary/15 text-primary'
-          )}
-          aria-label={isRecording ? 'Stop Recording and Download Video' : 'Download Scenario MP4 Video'}
-        >
-          {isRecording ? (
-            <>
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
-              </span>
-              <span className="font-mono text-xs font-bold">
-                {recordedDuration.toFixed(0)}s
-              </span>
-            </>
-          ) : (
-            <>
-              <Video className="h-3.5 w-3.5 text-primary shrink-0" />
-              <Download className="h-3 w-3 text-primary shrink-0 -ml-0.5" />
-              <span className="font-bold text-xs">MP4</span>
-            </>
-          )}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{tooltipText}</TooltipContent>
-    </Tooltip>
+    <ShortcutTooltip
+      label={tooltipLabel}
+      shortcuts={PLAYER_SHORTCUTS.RECORD.displayKeys}
+    >
+      <Button
+        variant={isRecording ? 'destructive' : 'outline'}
+        size="sm"
+        onClick={onToggleRecord}
+        className={cn(
+          'gap-1.5 h-8.5 px-3 text-xs font-semibold rounded-lg active:scale-95 transition-all shadow-xs shrink-0 cursor-pointer',
+          isRecording
+            ? 'bg-red-600 hover:bg-red-500 text-white animate-pulse border-red-500 ring-2 ring-red-500/30'
+            : 'border-primary/40 bg-primary/5 hover:bg-primary/15 text-primary'
+        )}
+        aria-label={isRecording ? 'Stop Recording and Download Video' : 'Download Scenario MP4 Video'}
+      >
+        {isRecording ? (
+          <>
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+            </span>
+            <span className="font-mono text-xs font-bold">
+              {recordedDuration.toFixed(0)}s
+            </span>
+          </>
+        ) : (
+          <>
+            <Video className="h-3.5 w-3.5 text-primary shrink-0" />
+            <Download className="h-3 w-3 text-primary shrink-0 -ml-0.5" />
+            <span className="font-bold text-xs">MP4</span>
+          </>
+        )}
+      </Button>
+    </ShortcutTooltip>
   );
 }
 
@@ -471,24 +477,24 @@ interface FullscreenButtonProps {
 
 function FullscreenButton({ isFullscreen, onToggleFullscreen }: FullscreenButtonProps) {
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8.5 w-8.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 active:scale-95 transition-all shrink-0 cursor-pointer"
-          onClick={onToggleFullscreen}
-          aria-label="Toggle Fullscreen"
-        >
-          {isFullscreen ? (
-            <Minimize className="h-4 w-4" />
-          ) : (
-            <Maximize className="h-4 w-4" />
-          )}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}</TooltipContent>
-    </Tooltip>
+    <ShortcutTooltip
+      label={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+      shortcuts={PLAYER_SHORTCUTS.FULLSCREEN.displayKeys}
+    >
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8.5 w-8.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 active:scale-95 transition-all shrink-0 cursor-pointer"
+        onClick={onToggleFullscreen}
+        aria-label="Toggle Fullscreen"
+      >
+        {isFullscreen ? (
+          <Minimize className="h-4 w-4" />
+        ) : (
+          <Maximize className="h-4 w-4" />
+        )}
+      </Button>
+    </ShortcutTooltip>
   );
 }
 
@@ -560,7 +566,7 @@ export const PlayerControls: React.FC<PlayerControlsProps> = (props) => {
     : Math.min(simulationTime, effectiveDuration);
 
   return (
-    <TooltipProvider delayDuration={200}>
+    <TooltipProvider delayDuration={150}>
       <div className="absolute bottom-5 left-0 w-full flex justify-center pointer-events-none z-30 px-3 sm:px-4 group/dock">
         <div className="pointer-events-auto flex flex-col gap-2 bg-card/95 dark:bg-card/90 backdrop-blur-2xl border border-border/80 hover:border-primary/50 p-2.5 sm:p-3 px-4 sm:px-5 rounded-2xl shadow-xl hover:shadow-2xl w-[min(98%,1260px)] min-w-0 transition-all duration-300 ease-out transform-gpu scale-95 opacity-90 hover:scale-100 hover:opacity-100">
           {/* Top Row: Full-width Timeline Scrubber Line */}
