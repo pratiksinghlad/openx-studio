@@ -147,4 +147,36 @@ describe('Scenario Parameters Classification and Domain Ordering', () => {
     };
     assert.equal(formatParameterDisplayValue(p2), '17500 lx');
   });
+
+  it('filters parameters accurately by domain category and search query', () => {
+    const rawParams: ScenarioParameterMetadata[] = [
+      { name: 'Weather_Fog_VisualRange', type: 'double', value: '100.0' },
+      { name: 'Ego_Target_Speed', type: 'double', value: '25.0' },
+      { name: 'Vehicle_Model', type: 'string', value: 'sedan_blue' },
+      { name: 'Random_Seed', type: 'integer', value: '1234' },
+    ];
+    const sorted = sortParametersByDomain(rawParams);
+
+    // Filter by category 'odd'
+    const oddOnly = sorted.filter((p) => p.category === 'odd');
+    assert.equal(oddOnly.length, 1);
+    assert.equal(oddOnly[0].name, 'Weather_Fog_VisualRange');
+
+    // Filter by category 'behavior'
+    const behaviorOnly = sorted.filter((p) => p.category === 'behavior');
+    assert.equal(behaviorOnly.length, 1);
+    assert.equal(behaviorOnly[0].name, 'Ego_Target_Speed');
+
+    // Filter by text search 'sedan'
+    const searchTerm = 'sedan';
+    const textMatches = sorted.filter(
+      (p) =>
+        p.name.toLowerCase().includes(searchTerm) ||
+        p.value.toLowerCase().includes(searchTerm) ||
+        (p.meaning && p.meaning.toLowerCase().includes(searchTerm))
+    );
+    assert.equal(textMatches.length, 1);
+    assert.equal(textMatches[0].name, 'Vehicle_Model');
+  });
 });
+

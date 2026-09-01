@@ -2,7 +2,7 @@
 
 ## Domains
 - [simulation](lessons/simulation.md) (4 lessons)
-- [ui-theme](lessons/ui-theme.md) (1 lesson)
+- [ui-theme](lessons/ui-theme.md) (2 lessons)
 - [seo](lessons/seo.md) (1 lesson)
 - [security](lessons/security.md) (1 lesson)
 - [performance](lessons/performance.md) (2 lessons)

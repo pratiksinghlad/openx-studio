@@ -62,8 +62,6 @@ export const ScenarioInspector: React.FC<ScenarioInspectorProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<ParameterDomainCategory | 'all'>('all');
   const [paramSearch, setParamSearch] = useState('');
 
-  if (!isOpen) return null;
-
   const rawParams = metadata?.parameters || [];
   const entities: ScenarioObjectState[] = currentFrame?.object_states || [];
   const sortedParams = useMemo(() => sortParametersByDomain(rawParams), [rawParams]);
@@ -81,6 +79,8 @@ export const ScenarioInspector: React.FC<ScenarioInspectorProps> = ({
       return matchCat && matchText;
     });
   }, [sortedParams, selectedCategory, paramSearch]);
+
+  if (!isOpen) return null;
 
   return (
     <div
