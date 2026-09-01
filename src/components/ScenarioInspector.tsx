@@ -25,9 +25,7 @@ import {
   Activity,
   Gauge,
   Workflow,
-  Sparkles,
   Compass,
-  Thermometer,
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
@@ -233,7 +231,14 @@ const ScenarioHeaderCard: React.FC<{
                 <Calendar className="h-3 w-3" /> Date
               </span>
               <span className="font-bold text-foreground block">
-                {new Date(header.date).toLocaleDateString()}
+                {(() => {
+                  try {
+                    const d = new Date(header.date);
+                    return isNaN(d.getTime()) ? header.date : d.toLocaleDateString();
+                  } catch {
+                    return header.date;
+                  }
+                })()}
               </span>
             </div>
           )}
@@ -526,7 +531,8 @@ const ParametersExplorerCard: React.FC<ParametersExplorerProps> = ({
         ) : (
           <div className="border border-border rounded-lg overflow-hidden divide-y divide-border/40">
             {parameters.map((p, idx) => {
-              const cat = p.category || 'general';
+              const cat = (p.category && DOMAIN_CATEGORIES[p.category]) ? p.category : 'general';
+              const categoryInfo = DOMAIN_CATEGORIES[cat] || DOMAIN_CATEGORIES.general;
               const isOdd = cat === 'odd';
               const isBehavior = cat === 'behavior';
               const formattedValue = formatParameterDisplayValue(p);
@@ -556,7 +562,7 @@ const ParametersExplorerCard: React.FC<ParametersExplorerProps> = ({
                             : 'bg-muted text-muted-foreground'
                         )}
                       >
-                        {DOMAIN_CATEGORIES[cat].label}
+                        {categoryInfo.label}
                       </Badge>
                       <span className="font-mono text-xs font-bold text-foreground truncate">
                         {p.name}
@@ -571,7 +577,7 @@ const ParametersExplorerCard: React.FC<ParametersExplorerProps> = ({
                   {/* Semantic Meaning & Type Info */}
                   <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-0.5">
                     <span className="truncate pr-2 font-medium">
-                      {p.meaning || DOMAIN_CATEGORIES[cat].description}
+                      {p.meaning || categoryInfo.description}
                     </span>
                     <Badge variant="outline" className="text-[9px] px-1 py-0 shrink-0 font-mono">
                       {p.type}

@@ -215,13 +215,14 @@ export function inferParameterMeaning(name: string, category: ParameterDomainCat
     .replace(/([a-z])([A-Z])/g, '$1 $2')
     .replace(/^\w/, (c) => c.toUpperCase());
 
-  return `${DOMAIN_CATEGORIES[category].label}: ${formatted}`;
+  const catInfo = DOMAIN_CATEGORIES[category] || DOMAIN_CATEGORIES.general;
+  return `${catInfo.label}: ${formatted}`;
 }
 
 export function classifyParameter(param: ScenarioParameterMetadata): ScenarioParameterMetadata {
-  const category = param.category || detectDomainCategory(param.name);
-  const unit = param.unit || inferParameterUnit(param.name, param.type);
-  const meaning = param.meaning || inferParameterMeaning(param.name, category);
+  const category = param.category || detectDomainCategory(param.name || '');
+  const unit = param.unit || inferParameterUnit(param.name || '', param.type || '');
+  const meaning = param.meaning || inferParameterMeaning(param.name || '', category);
 
   return {
     ...param,
@@ -242,12 +243,12 @@ export function sortParametersByDomain(params: ScenarioParameterMetadata[]): Sce
   return [...params]
     .map(classifyParameter)
     .sort((a, b) => {
-      const pA = categoryPriority[a.category || 'general'];
-      const pB = categoryPriority[b.category || 'general'];
+      const pA = categoryPriority[a.category || 'general'] || 4;
+      const pB = categoryPriority[b.category || 'general'] || 4;
       if (pA !== pB) {
         return pA - pB;
       }
-      return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+      return (a.name || '').localeCompare(b.name || '', undefined, { numeric: true, sensitivity: 'base' });
     });
 }
 
@@ -261,8 +262,10 @@ export function extractDomainCounts(params: ScenarioParameterMetadata[]): Record
   };
 
   for (const p of params) {
-    const cat = p.category || detectDomainCategory(p.name);
-    counts[cat] = (counts[cat] || 0) + 1;
+    const cat = p.category || detectDomainCategory(p.name || '');
+    const validCat: ParameterDomainCategory =
+      cat === 'odd' || cat === 'behavior' || cat === 'entity' || cat === 'general' ? cat : 'general';
+    counts[validCat] = (counts[validCat] || 0) + 1;
   }
 
   return counts;

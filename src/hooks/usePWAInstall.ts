@@ -24,10 +24,18 @@ export function checkIsStandalone(): boolean {
   );
 }
 
+export function checkIsInstallSupported(): boolean {
+  if (typeof window === 'undefined') return false;
+  return (
+    (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) ||
+    'BeforeInstallPromptEvent' in window
+  );
+}
+
 export function usePWAInstall(): PWAInstallState {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState<boolean>(() => checkIsStandalone());
-  const [isInstallSupported, setIsInstallSupported] = useState<boolean>(true);
+  const isInstallSupported = checkIsInstallSupported();
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {

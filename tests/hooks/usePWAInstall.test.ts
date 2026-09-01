@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkIsStandalone } from '../../src/hooks/usePWAInstall.ts';
+import { checkIsStandalone, checkIsInstallSupported } from '../../src/hooks/usePWAInstall.ts';
 
 describe('PWA Installation & Standalone Utilities', () => {
   it('checkIsStandalone returns false in non-browser / default test environment', () => {
@@ -59,6 +59,28 @@ describe('PWA Installation & Standalone Utilities', () => {
     const result = checkIsStandalone();
     assert.equal(result, true);
 
+    if (originalWindow !== undefined) {
+      globalThis.window = originalWindow;
+    } else {
+      delete (globalThis as { window?: unknown }).window;
+    }
+  });
+
+  it('checkIsInstallSupported detects service worker or beforeinstallprompt support', () => {
+    const originalWindow = globalThis.window;
+
+    // In non-browser / clean environment
+    delete (globalThis as { window?: unknown }).window;
+    assert.equal(checkIsInstallSupported(), false);
+
+    // In environment with BeforeInstallPromptEvent on window
+    globalThis.window = {
+      BeforeInstallPromptEvent: function () {},
+    } as unknown as Window & typeof globalThis;
+
+    assert.equal(checkIsInstallSupported(), true);
+
+    // Restore
     if (originalWindow !== undefined) {
       globalThis.window = originalWindow;
     } else {

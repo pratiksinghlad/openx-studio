@@ -66,6 +66,29 @@ describe('Scenario Parameters Classification and Domain Ordering', () => {
     assert.equal(inferParameterMeaning('TTC_Threshold', 'behavior'), 'Critical Time-To-Collision (TTC)');
   });
 
+  it('classifies parameter and attaches inferred category, unit, and semantic meaning', () => {
+    const raw: ScenarioParameterMetadata = {
+      name: 'Weather_Fog_VisualRange',
+      type: 'double',
+      value: '150.0',
+    };
+    const classified = classifyParameter(raw);
+    assert.equal(classified.category, 'odd');
+    assert.equal(classified.unit, 'm');
+    assert.equal(classified.meaning, 'Atmospheric Fog Visual Range');
+    assert.equal(classified.value, '150.0');
+
+    const rawBehavior: ScenarioParameterMetadata = {
+      name: 'Target_Speed',
+      type: 'double',
+      value: '25.0',
+    };
+    const classifiedBehavior = classifyParameter(rawBehavior);
+    assert.equal(classifiedBehavior.category, 'behavior');
+    assert.equal(classifiedBehavior.unit, 'm/s');
+    assert.equal(classifiedBehavior.meaning, 'Target Vehicle Longitudinal Velocity');
+  });
+
   it('strictly orders parameters: ODD first, then Behavior, then Entity, then General', () => {
     const rawParams: ScenarioParameterMetadata[] = [
       { name: 'Execution_Timeout', type: 'double', value: '60' }, // general
