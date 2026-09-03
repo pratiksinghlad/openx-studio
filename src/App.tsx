@@ -147,24 +147,15 @@ export function App() {
     let idleId: number | null = null;
     let timerId: ReturnType<typeof setTimeout> | null = null;
 
-    if (typeof window !== 'undefined') {
-      if ('requestIdleCallback' in window) {
-        idleId = (window as unknown as { requestIdleCallback: (cb: () => void, opt?: { timeout: number }) => number }).requestIdleCallback(
-          () => {
-            client.init();
-          },
-          { timeout: 4000 }
-        );
-      } else {
-        timerId = setTimeout(() => {
-          client.init();
-        }, 2500);
-      }
+    if ('requestIdleCallback' in window) {
+      idleId = window.requestIdleCallback(() => { client.init(); }, { timeout: 4000 });
+    } else {
+      timerId = setTimeout(() => { client.init(); }, 2500);
     }
 
     return () => {
       if (idleId !== null && 'cancelIdleCallback' in window) {
-        (window as unknown as { cancelIdleCallback: (id: number) => void }).cancelIdleCallback(idleId);
+        window.cancelIdleCallback(idleId);
       }
       if (timerId !== null) {
         clearTimeout(timerId);
@@ -189,14 +180,6 @@ export function App() {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
   }, []);
-
-  const handleOpenAbout = useCallback(() => {
-    navigateToAbout();
-  }, [navigateToAbout]);
-
-  const handleCloseAbout = useCallback(() => {
-    navigateToHome();
-  }, [navigateToHome]);
 
   const handleGoHome = useCallback(() => {
     if (workerClient) {
@@ -391,7 +374,7 @@ export function App() {
           </div>
         }
       >
-        <AboutPage onBackToSimulator={handleCloseAbout} />
+        <AboutPage onBackToSimulator={navigateToHome} />
       </Suspense>
     );
   }
@@ -488,7 +471,7 @@ export function App() {
             <Button
               variant="outline"
               size="default"
-              onClick={handleOpenAbout}
+              onClick={navigateToAbout}
               className="gap-1.5 h-9 px-2.5 sm:px-3 text-xs sm:text-sm font-semibold shadow-xs cursor-pointer"
               title="About OpenX Studio & Privacy"
               aria-label="About OpenX Studio & Privacy"
@@ -572,6 +555,7 @@ export function App() {
             ref={viewportRef}
             roadGeometry={roadGeometry}
             currentFrame={currentFrame}
+            metadata={scenarioMetadata}
             cameraMode={cameraMode}
             cameraResetTrigger={cameraResetTrigger}
             theme={theme}
@@ -593,7 +577,7 @@ export function App() {
             currentFrame={currentFrame}
             scenarioName={scenarioName}
             onFocusEntity={(id) => setSelectedEntityId(id)}
-            onOpenAbout={handleOpenAbout}
+            onOpenAbout={navigateToAbout}
           />
         </Suspense>
 

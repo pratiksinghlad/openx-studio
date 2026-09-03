@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { RoadGeometryPoint, LaneSurfaceGeometry } from '../types/simulation';
+import type { RoadGeometryPoint, LaneSurfaceGeometry } from '../types/simulation.ts';
 
 export const ROAD_MARK_Z_OFFSET = 0.025;
 
@@ -28,14 +28,21 @@ export const LANE_TYPE_MASKS = {
   CONNECTINGRAMP: 1 << 21,
 };
 
+export const SIDEWALK_CURB_Z_OFFSET = 0.08;
+
 export function getLaneColor(laneType: number): string {
-  if (laneType & LANE_TYPE_MASKS.SIDEWALK) return '#8c9199';
+  if (laneType & LANE_TYPE_MASKS.SIDEWALK) return '#cbd5e1'; // Clean concrete sidewalk pavers
   if (laneType & LANE_TYPE_MASKS.SHOULDER) return '#3a3d42';
   if (laneType & LANE_TYPE_MASKS.BORDER) return '#444850';
   if (laneType & LANE_TYPE_MASKS.MEDIAN) return '#505660';
-  if (laneType & LANE_TYPE_MASKS.BIKING) return '#34495e';
+  if (laneType & LANE_TYPE_MASKS.BIKING) return '#0f766e'; // Modern cycling lane emerald
   if (laneType & LANE_TYPE_MASKS.PARKING) return '#3d4148';
-  return '#26292e'; // default driving lane asphalt
+  return '#1e293b'; // High-contrast deep slate driving lane asphalt
+}
+
+export function getLaneZOffset(laneType: number): number {
+  if (laneType & LANE_TYPE_MASKS.SIDEWALK) return SIDEWALK_CURB_Z_OFFSET;
+  return 0;
 }
 
 export function getRoadMarkColor(colorStr: string): string {

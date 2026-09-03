@@ -1,18 +1,23 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import {
+import type {
   ScenarioRoadGeometry,
   ScenarioFrame,
   ScenarioObjectState,
-} from '../types/simulation';
+  ScenarioMetadata,
+} from '../types/simulation.ts';
 import {
   getLaneColor,
+  getLaneZOffset,
   createStripGeometry,
   createRoadMarkMesh,
   createFallbackBoundaryMarks,
-} from './geometryUtils';
+} from './geometryUtils.ts';
+import { createEntityMesh, resolveEntityVisualType } from './entityMeshBuilder.ts';
+import type { EntityVisualType } from './entityMeshBuilder.ts';
+import { createRoadFeatureMesh } from './roadFeatureMeshBuilder.ts';
 
-export * from './types';
+export * from './types.ts';
 import {
   CameraMode,
   ViewTheme,
@@ -20,7 +25,7 @@ import {
   CAMERA_MODES,
   VIEW_THEMES,
   DEFAULT_CAMERA_CONFIG,
-} from './types';
+} from './types.ts';
 
 
 export class ScenarioRenderer {
@@ -48,6 +53,8 @@ export class ScenarioRenderer {
   private entityTargetStates: Map<number, ScenarioObjectState> = new Map();
   private entityTrails: Map<number, THREE.Vector3[]> = new Map();
   private entityLabels: Map<number, { sprite: THREE.Sprite; canvas: HTMLCanvasElement; texture: THREE.CanvasTexture }> = new Map();
+  private entityVisualTypes: Map<number, EntityVisualType> = new Map();
+  private metadataCategoryMap = new Map<string, string>();
 
   private cameraMode: CameraMode = CAMERA_MODES.ORBIT;
   private currentTheme: ViewTheme = VIEW_THEMES.LIGHT;
@@ -116,8 +123,6 @@ export class ScenarioRenderer {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(width, height);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(this.renderer.domElement);
 
     // Setup Controls
@@ -128,33 +133,22 @@ export class ScenarioRenderer {
     this.controls.maxPolarAngle = this.cameraConfig.orbitMaxPolarAngle;
     this.controls.minPolarAngle = this.cameraConfig.orbitMinPolarAngle;
 
-    // High Visibility Lighting
-    this.ambientLight = new THREE.HemisphereLight('#ffffff', '#c5ccd6', 1.8);
-    this.sunLight = new THREE.DirectionalLight('#ffffff', 1.8);
-    this.sunLight.position.set(120, -90, 160);
-    this.sunLight.castShadow = true;
-    this.sunLight.shadow.mapSize.width = 2048;
-    this.sunLight.shadow.mapSize.height = 2048;
-    this.sunLight.shadow.camera.near = 10;
-    this.sunLight.shadow.camera.far = 800;
-    const d = 200;
-    this.sunLight.shadow.camera.left = -d;
-    this.sunLight.shadow.camera.right = d;
-    this.sunLight.shadow.camera.top = d;
-    this.sunLight.shadow.camera.bottom = -d;
+    // High-Clarity Balanced Lighting (Industry standard for automotive/robotics digital twins)
+    this.ambientLight = new THREE.HemisphereLight('#ffffff', '#94a3b8', 1.0);
+    this.sunLight = new THREE.DirectionalLight('#ffffff', 0.85);
+    this.sunLight.position.set(60, 40, 100);
     this.scene.add(this.ambientLight, this.sunLight);
     this.scene.add(this.sunLight.target);
 
     // Ground Plane (Large and dynamic to cover any scenario coordinates)
     const groundGeo = new THREE.PlaneGeometry(60000, 60000);
     const groundMat = new THREE.MeshStandardMaterial({
-      color: '#f8fafc', // Clean bright light ground
+      color: '#f8fafc',
       roughness: 0.95,
-      metalness: 0.02,
+      metalness: 0.0,
     });
     this.ground = new THREE.Mesh(groundGeo, groundMat);
-    this.ground.position.z = -0.05;
-    this.ground.receiveShadow = true;
+    this.ground.position.z = -0.1;
     this.scene.add(this.ground);
 
     // Add Scene Groups
@@ -184,23 +178,23 @@ export class ScenarioRenderer {
 
   private applyTheme(theme: ViewTheme) {
     if (theme === VIEW_THEMES.LIGHT) {
-      // Bright daylight sky & clean light ground with gentle distant linear fog
+      // Daylight sky & ground with distant fog beyond the scenario road bounds
       this.scene.background = new THREE.Color('#f8fafc');
-      this.scene.fog = new THREE.Fog('#f8fafc', 300, 3500);
+      this.scene.fog = new THREE.Fog('#f8fafc', 800, 6000);
       (this.ground.material as THREE.MeshStandardMaterial).color.set('#f8fafc');
       this.ambientLight.color.set('#ffffff');
-      this.ambientLight.groundColor.set('#e2e8f0');
-      this.ambientLight.intensity = 1.8;
-      this.sunLight.intensity = 1.8;
+      this.ambientLight.groundColor.set('#94a3b8');
+      this.ambientLight.intensity = 1.0;
+      this.sunLight.intensity = 0.85;
     } else {
-      // Sleek dark night
+      // Night view with subtle celestial ambient
       this.scene.background = new THREE.Color('#0f172a');
-      this.scene.fog = new THREE.Fog('#0f172a', 300, 3500);
-      (this.ground.material as THREE.MeshStandardMaterial).color.set('#131c31');
-      this.ambientLight.color.set('#f8fafc');
-      this.ambientLight.groundColor.set('#334155');
-      this.ambientLight.intensity = 1.2;
-      this.sunLight.intensity = 1.5;
+      this.scene.fog = new THREE.Fog('#0f172a', 800, 6000);
+      (this.ground.material as THREE.MeshStandardMaterial).color.set('#0b0f19');
+      this.ambientLight.color.set('#bae6fd');
+      this.ambientLight.groundColor.set('#0f172a');
+      this.ambientLight.intensity = 0.75;
+      this.sunLight.intensity = 0.7;
     }
   }
 
@@ -337,23 +331,44 @@ export class ScenarioRenderer {
     return true;
   }
 
+  public setScenarioMetadata(metadata: ScenarioMetadata | null) {
+    this.metadataCategoryMap.clear();
+    if (metadata?.vehicles) {
+      for (const v of metadata.vehicles) {
+        this.metadataCategoryMap.set(v.name.toLowerCase().trim(), v.category.toLowerCase().trim());
+      }
+    }
+    // Re-evaluate any already instantiated entities
+    for (const [id, target] of this.entityTargetStates.entries()) {
+      const newType = resolveEntityVisualType(target, this.metadataCategoryMap);
+      if (this.entityVisualTypes.get(id) !== newType) {
+        const oldGroup = this.entityMeshes.get(id);
+        if (oldGroup) this.entityGroup.remove(oldGroup);
+        const newGroup = this.createEntityMesh(target);
+        this.entityMeshes.set(id, newGroup);
+        this.entityVisualTypes.set(id, newType);
+        this.entityGroup.add(newGroup);
+      }
+    }
+  }
+
   public setRoadGeometry(roadGeometry: ScenarioRoadGeometry) {
     this.clearRoadScene();
 
-    // 1. Build Lane Surfaces
+    // 1. Build Lane Surfaces with elevated sidewalks and paver materials
     for (const surface of roadGeometry.lane_surfaces) {
-      const geo = createStripGeometry(surface.left_boundary, surface.right_boundary);
+      const zOffset = getLaneZOffset(surface.lane_type);
+      const geo = createStripGeometry(surface.left_boundary, surface.right_boundary, zOffset);
       if (!geo) continue;
 
       const mat = new THREE.MeshStandardMaterial({
         color: getLaneColor(surface.lane_type),
-        roughness: 0.88,
-        metalness: 0.04,
+        roughness: 0.95,
+        metalness: 0.0,
         side: THREE.DoubleSide,
       });
 
       const mesh = new THREE.Mesh(geo, mat);
-      mesh.receiveShadow = true;
       this.roadGroup.add(mesh);
     }
 
@@ -373,23 +388,10 @@ export class ScenarioRenderer {
       }
     }
 
-    // 3. Build Road Feature Boxes / Objects
+    // 3. Build Road Feature Boxes / Objects (Crosswalks, buildings, trees, poles, barriers)
     for (const box of roadGeometry.road_feature_boxes) {
-      const width = Math.max(0.5, box.width);
-      const length = Math.max(0.5, box.length);
-      const height = Math.max(0.5, box.height);
-
-      const boxGeo = new THREE.BoxGeometry(length, width, height);
-      const boxMat = new THREE.MeshStandardMaterial({
-        color: '#64748b',
-        roughness: 0.6,
-      });
-      const boxMesh = new THREE.Mesh(boxGeo, boxMat);
-      boxMesh.position.set(box.x, box.y, box.z + height / 2);
-      boxMesh.rotation.set(box.r, box.p, box.h);
-      boxMesh.castShadow = true;
-      boxMesh.receiveShadow = true;
-      this.objectGroup.add(boxMesh);
+      const featureMesh = createRoadFeatureMesh(box);
+      this.objectGroup.add(featureMesh);
     }
 
     // Center camera on road or existing entities
@@ -454,10 +456,24 @@ export class ScenarioRenderer {
 
       this.entityTargetStates.set(obj.id, obj);
 
+      const resolvedType = resolveEntityVisualType(obj, this.metadataCategoryMap);
       let entityGroup = this.entityMeshes.get(obj.id);
-      if (!entityGroup) {
-        entityGroup = this.createVehicleMesh(obj);
+      const prevType = this.entityVisualTypes.get(obj.id);
+
+      if (!entityGroup || prevType !== resolvedType) {
+        if (entityGroup) {
+          this.entityGroup.remove(entityGroup);
+          this.entityMeshes.delete(obj.id);
+          const oldLabel = this.entityLabels.get(obj.id);
+          if (oldLabel) {
+            oldLabel.texture.dispose();
+            (oldLabel.sprite.material as THREE.Material).dispose();
+            this.entityLabels.delete(obj.id);
+          }
+        }
+        entityGroup = this.createEntityMesh(obj);
         this.entityMeshes.set(obj.id, entityGroup);
+        this.entityVisualTypes.set(obj.id, resolvedType);
         this.entityGroup.add(entityGroup);
       }
 
@@ -483,6 +499,7 @@ export class ScenarioRenderer {
       if (!activeIds.has(id)) {
         this.entityGroup.remove(group);
         this.entityMeshes.delete(id);
+        this.entityVisualTypes.delete(id);
         this.entityTargetStates.delete(id);
         const labelObj = this.entityLabels.get(id);
         if (labelObj) {
@@ -531,127 +548,15 @@ export class ScenarioRenderer {
     this.controls.update();
   }
 
-  private getEntityColor(obj: ScenarioObjectState, isEgo: boolean): string {
-    if (isEgo || obj.name.toLowerCase().includes('ego')) {
-      return '#2563eb'; // Standard Cobalt Blue for Ego
-    }
-    const lowerName = obj.name.toLowerCase();
-    if (lowerName.includes('cutin') || lowerName.includes('target') || lowerName.includes('lead') || lowerName.includes('adversary')) {
-      return '#dc2626'; // Standard Signal Red for primary target / cut-in vehicle
-    }
-    const palette = [
-      '#dc2626', // Red
-      '#d97706', // Amber
-      '#10b981', // Emerald
-      '#8b5cf6', // Violet
-      '#06b6d4', // Cyan
-      '#f43f5e', // Rose
-      '#475569', // Slate
-      '#ea580c', // Orange
-    ];
-    return palette[Math.abs(obj.id) % palette.length];
-  }
-
-  private createVehicleMesh(obj: ScenarioObjectState): THREE.Group {
-    const group = new THREE.Group();
-
+  private createEntityMesh(obj: ScenarioObjectState): THREE.Group {
     const isEgo = obj.id === this.egoVehicleId || obj.name.toLowerCase().includes('ego');
-    const width = Math.max(1.5, obj.width || 1.8);
-    const length = Math.max(2.8, obj.length || 4.5);
-    const height = Math.max(1.3, obj.height || 1.5);
+    const group = createEntityMesh(obj, isEgo, this.metadataCategoryMap);
 
-    // Standard vehicle color
-    const bodyColor = this.getEntityColor(obj, isEgo);
+    const length = Math.max(1.0, obj.length || 2.0);
+    const width = Math.max(0.6, obj.width || 1.0);
+    const height = Math.max(1.0, obj.height || 1.5);
 
-    // 1. Lower Body Chassis
-    const chassisGeo = new THREE.BoxGeometry(length, width, height * 0.55);
-    const chassisMat = new THREE.MeshStandardMaterial({
-      color: bodyColor,
-      roughness: 0.25,
-      metalness: 0.5,
-    });
-    const chassis = new THREE.Mesh(chassisGeo, chassisMat);
-    chassis.position.z = height * 0.45;
-    chassis.castShadow = true;
-    chassis.receiveShadow = true;
-    group.add(chassis);
-
-    // 2. Chassis Razor-Sharp Black Outline for Maximum Visibility
-    const outlineGeo = new THREE.EdgesGeometry(chassisGeo);
-    const outlineMat = new THREE.LineBasicMaterial({
-      color: '#0f172a',
-      linewidth: 2,
-    });
-    const outline = new THREE.LineSegments(outlineGeo, outlineMat);
-    outline.position.z = height * 0.45;
-    group.add(outline);
-
-    // 3. Cabin / Tinted Glass
-    const cabinGeo = new THREE.BoxGeometry(length * 0.55, width * 0.85, height * 0.45);
-    const cabinMat = new THREE.MeshStandardMaterial({
-      color: '#1e293b',
-      roughness: 0.1,
-      metalness: 0.9,
-    });
-    const cabin = new THREE.Mesh(cabinGeo, cabinMat);
-    cabin.position.set(-length * 0.08, 0, height * 0.85);
-    cabin.castShadow = true;
-    group.add(cabin);
-
-    // 4. Headlights (Bright Yellow-White)
-    const headlightGeo = new THREE.BoxGeometry(0.12, width * 0.22, 0.14);
-    const headlightMat = new THREE.MeshStandardMaterial({
-      color: '#fef08a',
-      emissive: '#fef08a',
-      emissiveIntensity: 1.5,
-    });
-    const hlLeft = new THREE.Mesh(headlightGeo, headlightMat);
-    hlLeft.position.set(length * 0.5, width * 0.3, height * 0.45);
-    const hlRight = hlLeft.clone();
-    hlRight.position.set(length * 0.5, -width * 0.3, height * 0.45);
-    group.add(hlLeft, hlRight);
-
-    // 5. Taillights (Bright Red)
-    const taillightMat = new THREE.MeshStandardMaterial({
-      color: '#ef4444',
-      emissive: '#ef4444',
-      emissiveIntensity: 1.5,
-    });
-    const tlLeft = new THREE.Mesh(headlightGeo, taillightMat);
-    tlLeft.position.set(-length * 0.5, width * 0.3, height * 0.45);
-    const tlRight = tlLeft.clone();
-    tlRight.position.set(-length * 0.5, -width * 0.3, height * 0.45);
-    group.add(tlLeft, tlRight);
-
-    // 6. Wheels (4 rubber cylinders)
-    const wheelRadius = height * 0.25;
-    const wheelWidth = 0.28;
-    const wheelGeo = new THREE.CylinderGeometry(wheelRadius, wheelRadius, wheelWidth, 16);
-    wheelGeo.rotateX(Math.PI / 2);
-    const wheelMat = new THREE.MeshStandardMaterial({
-      color: '#18181b',
-      roughness: 0.8,
-    });
-
-    const wheelOffsetX = length * 0.32;
-    const wheelOffsetY = width * 0.5;
-    const wheelOffsetZ = wheelRadius;
-
-    const positions = [
-      [wheelOffsetX, wheelOffsetY, wheelOffsetZ],
-      [wheelOffsetX, -wheelOffsetY, wheelOffsetZ],
-      [-wheelOffsetX, wheelOffsetY, wheelOffsetZ],
-      [-wheelOffsetX, -wheelOffsetY, wheelOffsetZ],
-    ];
-
-    positions.forEach(([x, y, z]) => {
-      const wheel = new THREE.Mesh(wheelGeo, wheelMat);
-      wheel.position.set(x, y, z);
-      wheel.castShadow = true;
-      group.add(wheel);
-    });
-
-    // 7. Ground Shadow Plate (for solid grounding)
+    // Ground Shadow Plate (for solid grounding)
     const shadowGeo = new THREE.PlaneGeometry(length * 1.15, width * 1.15);
     const shadowMat = new THREE.MeshBasicMaterial({
       color: '#000000',
@@ -662,13 +567,13 @@ export class ScenarioRenderer {
     shadow.position.z = 0.02;
     group.add(shadow);
 
-    // 8. Create Floating Info Sprite Label
+    // Create Floating Info Sprite Label
     const labelData = this.createLabelSprite(obj, isEgo);
     labelData.sprite.position.set(0, 0, height + 1.8);
     group.add(labelData.sprite);
     this.entityLabels.set(obj.id, labelData);
 
-    // Set initial position
+    // Set initial position & orientation
     group.position.set(obj.x, obj.y, obj.z);
     group.rotation.set(obj.r, obj.p, obj.h);
 
@@ -822,6 +727,7 @@ export class ScenarioRenderer {
     disposeGroup(this.trailGroup);
 
     this.entityMeshes.clear();
+    this.entityVisualTypes.clear();
     this.entityTargetStates.clear();
     this.entityTrails.clear();
     for (const l of this.entityLabels.values()) {
@@ -905,7 +811,7 @@ export class ScenarioRenderer {
       this.ground.position.x = focusTarget.x;
       this.ground.position.y = focusTarget.y;
 
-      this.sunLight.position.set(focusTarget.x + 120, focusTarget.y - 90, focusTarget.z + 160);
+      this.sunLight.position.set(focusTarget.x + 60, focusTarget.y + 40, focusTarget.z + 100);
       this.sunLight.target.position.set(focusTarget.x, focusTarget.y, focusTarget.z);
       this.sunLight.target.updateMatrixWorld();
 
