@@ -1,7 +1,7 @@
 # Agent Memory Index
 
 ## Domains
-- [simulation](lessons/simulation.md) (5 lessons)
+- [simulation](lessons/simulation.md) (8 lessons)
 - [ui-theme](lessons/ui-theme.md) (2 lessons)
 - [seo](lessons/seo.md) (1 lesson)
 - [security](lessons/security.md) (2 lessons)

@@ -1,5 +1,5 @@
-import { CAMERA_MODES, type CameraMode } from '../renderer/types.ts';
-import { PLAYBACK_SPEEDS } from './playback.ts';
+import { CAMERA_MODES, type CameraMode } from '../renderer/types';
+import { PLAYBACK_SPEEDS } from './playback';
 
 /**
  * YouTube-style keyboard shortcut keys and action descriptors.

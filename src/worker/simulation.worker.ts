@@ -379,17 +379,48 @@ function extractRoadInfo(xodrStr: string): ScenarioRoadMetadata | undefined {
 }
 
 function extractVehicles(xoscStr: string): ScenarioVehicleMetadata[] {
-  const vehicles: ScenarioVehicleMetadata[] = [];
-  const objRegex = /<ScenarioObject\s+name=["']([^"']+)["'][\s\S]*?<Vehicle\s+name=["']([^"']*)["']\s+vehicleCategory=["']([^"']*)["']/gi;
-  let vMatch;
-  while ((vMatch = objRegex.exec(xoscStr)) !== null) {
-    vehicles.push({
-      name: vMatch[1],
-      model: vMatch[2] || vMatch[1],
-      category: vMatch[3] || 'car',
-    });
+  const entities: ScenarioVehicleMetadata[] = [];
+  const seenNames = new Set<string>();
+
+  const scenarioObjRegex = /<ScenarioObject\s+name=["']([^"']+)["']([\s\S]*?)<\/ScenarioObject>/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = scenarioObjRegex.exec(xoscStr)) !== null) {
+    const name = match[1];
+    const body = match[2];
+    seenNames.add(name);
+
+    if (/<Pedestrian[\s>]/i.test(body)) {
+      const pCat = body.match(/pedestrianCategory=["']([^"']*)["']/i)?.[1] || 'pedestrian';
+      const pModel = body.match(/model=["']([^"']*)["']/i)?.[1] || name;
+      entities.push({ name, model: pModel, category: pCat });
+      continue;
+    }
+
+    if (/<Vehicle[\s>]/i.test(body)) {
+      const vCat = body.match(/vehicleCategory=["']([^"']*)["']/i)?.[1] || 'car';
+      const vName = body.match(/<Vehicle\s+[^>]*name=["']([^"']*)["']/i)?.[1] || name;
+      entities.push({ name, model: vName, category: vCat });
+      continue;
+    }
+
+    const catMatch = body.match(/<CatalogReference\s+[^>]*catalogName=["']([^"']*)["'][^>]*entryName=["']([^"']*)["']/i) ||
+      body.match(/<CatalogReference\s+[^>]*entryName=["']([^"']*)["'][^>]*catalogName=["']([^"']*)["']/i);
+    if (catMatch) {
+      const catLower = (catMatch[1] + ' ' + catMatch[2]).toLowerCase();
+      const isPed = catLower.includes('ped') || catLower.includes('human') || catLower.includes('walk');
+      const isTruck = catLower.includes('truck') || catLower.includes('semi');
+      const category = isPed ? 'pedestrian' : isTruck ? 'truck' : 'car';
+      entities.push({ name, model: catMatch[2] || name, category });
+      continue;
+    }
+
+    const lowerName = name.toLowerCase();
+    const inferredCategory = lowerName.includes('ped') || lowerName.includes('walk') || lowerName.includes('human') ? 'pedestrian' : 'car';
+    entities.push({ name, model: name, category: inferredCategory });
   }
-  return vehicles;
+
+  return entities;
 }
 
 function extractEnvironment(xoscStr: string, params: ScenarioParameterMetadata[]): ScenarioEnvironmentMetadata | undefined {
@@ -642,22 +673,14 @@ function stepFramePlayback() {
 
 function stepForward(stepSeconds: number = DEFAULT_STEP_INTERVAL_SECONDS) {
   if (!currentScenario || frameHistory.length === 0) return;
-
-  const currentFrame = frameHistory[currentHistoryIndex] || frameHistory[0];
-  const currentTime = currentFrame ? currentFrame.simulation_time : 0;
-  const targetTime = currentTime + stepSeconds;
-
-  seekToTime(targetTime);
+  const currentTime = frameHistory[currentHistoryIndex]?.simulation_time ?? 0;
+  seekToTime(currentTime + stepSeconds);
 }
 
 function stepBackward(stepSeconds: number = DEFAULT_STEP_INTERVAL_SECONDS) {
   if (!currentScenario || frameHistory.length === 0) return;
-
-  const currentFrame = frameHistory[currentHistoryIndex] || frameHistory[0];
-  const currentTime = currentFrame ? currentFrame.simulation_time : 0;
-  const targetTime = Math.max(0, currentTime - stepSeconds);
-
-  seekToTime(targetTime);
+  const currentTime = frameHistory[currentHistoryIndex]?.simulation_time ?? 0;
+  seekToTime(Math.max(0, currentTime - stepSeconds));
 }
 
 function seekToTime(targetTime: number) {
