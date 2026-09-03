@@ -27,3 +27,7 @@
 ## esmini SE_ObjectType Enum Mapping
 - In esmini C++ / WASM runtime, `SE_ObjectType` has values: `0 = NONE`, `1 = VEHICLE`, `2 = PEDESTRIAN`, `3 = MISC`.
 - Do not mistake `1` for pedestrian. Value `1` represents all dynamic vehicles (`<Vehicle>` tags, Ego, cars, trucks, buses). Pedestrians (`<Pedestrian>` tags) are strictly value `2`. Misc objects (`<MiscObject>`) are value `3`.
+
+## Node.js Native ESM Relative Import Extensions
+- Under Node's native test runner (`node --test`), ESM module resolution does not automatically append extensions to relative specifiers. Any relative imports in files tested by the Node runner must include explicit `.ts` extensions (supported via `allowImportingTsExtensions` in `tsconfig.json`), otherwise Node throws `ERR_MODULE_NOT_FOUND`.
+

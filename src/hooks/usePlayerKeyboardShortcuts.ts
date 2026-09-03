@@ -1,11 +1,11 @@
 import { useEffect, useCallback } from 'react';
-import type { CameraMode } from '../renderer/types';
+import type { CameraMode } from '../renderer/types.ts';
 import {
   PLAYER_SHORTCUTS,
   getPreviousSpeed,
   getNextSpeed,
   getNextCameraMode,
-} from '../constants/shortcuts';
+} from '../constants/shortcuts.ts';
 
 export interface UsePlayerKeyboardShortcutsProps {
   isLoaded: boolean;
