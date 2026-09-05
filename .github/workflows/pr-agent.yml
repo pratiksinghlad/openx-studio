@@ -2,7 +2,7 @@ name: PR Agent (OpenRouter)
 
 on:
   pull_request:
-    types: [opened, reopened, ready_for_review]
+    types: [opened, reopened, ready_for_review, synchronize]
   issue_comment:
     types: [created]
 
@@ -41,3 +41,4 @@ jobs:
           PR_REVIEWER.NUM_CODE_SUGGESTIONS: "4"
           CONFIG.MODEL: "openrouter/thinkingmachines/inkling:free"
           CONFIG.FALLBACK_MODELS: "['openrouter/nvidia/nemotron-3.5-lightning:free']"
+          CONFIG.CUSTOM_MODEL_MAX_TOKENS: "32000"

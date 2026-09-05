@@ -1,6 +1,7 @@
 [config]
 model = "openrouter/thinkingmachines/inkling:free"
 fallback_models = ["openrouter/nvidia/nemotron-3.5-lightning:free"]
+custom_model_max_tokens = 32000
 git_provider = "github"
 
 [openrouter]
