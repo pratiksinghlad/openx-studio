@@ -26,12 +26,26 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Verify Secret Presence
+        env:
+          KEY_API: ${{ secrets.OPENROUTER_API_KEY }}
+          KEY_RAW: ${{ secrets.OPENROUTER_KEY }}
+        run: |
+          if [ -n "$KEY_API" ]; then
+            echo "Successfully loaded secrets.OPENROUTER_API_KEY (length: ${#KEY_API})"
+          elif [ -n "$KEY_RAW" ]; then
+            echo "Successfully loaded secrets.OPENROUTER_KEY (length: ${#KEY_RAW})"
+          else
+            echo "::error::CRITICAL: Neither secrets.OPENROUTER_API_KEY nor secrets.OPENROUTER_KEY was found! Make sure it is added under 'Repository secrets' in Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+
       - name: Run PR Agent Action
         id: pragent
         uses: the-pr-agent/pr-agent@main
         env:
-          OPENROUTER_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_KEY: ${{ secrets.OPENROUTER_API_KEY || secrets.OPENROUTER_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY || secrets.OPENROUTER_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ACTION_CONFIG.AUTO_REVIEW: "true"
           GITHUB_ACTION_CONFIG.AUTO_DESCRIBE: "true"
