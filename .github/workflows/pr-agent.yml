@@ -31,6 +31,13 @@ jobs:
         uses: the-pr-agent/pr-agent@main
         env:
           OPENROUTER_KEY: ${{ secrets.OPENROUTER_KEY || secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_KEY || secrets.OPENROUTER_API_KEY }}
+          OPENAI_KEY: ${{ secrets.OPENROUTER_KEY || secrets.OPENROUTER_API_KEY }}
+          OPENAI_BASE: "https://openrouter.ai/api/v1"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTION_CONFIG.AUTO_REVIEW: "true"
+          GITHUB_ACTION_CONFIG.AUTO_DESCRIBE: "true"
+          PR_REVIEWER.INLINE_CODE_COMMENTS: "true"
+          PR_REVIEWER.NUM_CODE_SUGGESTIONS: "4"
           CONFIG.MODEL: "openrouter/thinkingmachines/inkling:free"
           CONFIG.FALLBACK_MODELS: "['openrouter/nvidia/nemotron-3.5-lightning:free']"
