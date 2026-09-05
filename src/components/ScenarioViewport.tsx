@@ -7,7 +7,7 @@ import {
   CAMERA_MODES,
   VIEW_THEMES,
 } from '../renderer/ScenarioRenderer';
-import { ScenarioRoadGeometry, ScenarioFrame } from '../types/simulation';
+import { ScenarioRoadGeometry, ScenarioFrame, ScenarioMetadata } from '../types/simulation';
 import { Activity, Gauge, ShieldCheck, AlertTriangle, Crosshair, Compass } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { cn } from '../lib/utils';
@@ -32,6 +32,7 @@ interface ScenarioViewportProps {
   cameraConfig?: Partial<CameraConfig>;
   theme?: ViewTheme;
   isLoaded: boolean;
+  metadata?: ScenarioMetadata | null;
   statusText: string;
   onOpenInspector?: () => void;
   onFocusEntity?: (entityId: number) => void;
@@ -42,6 +43,7 @@ interface ScenarioViewportProps {
 export const ScenarioViewport = forwardRef<ScenarioViewportHandle, ScenarioViewportProps>(({
   roadGeometry,
   currentFrame,
+  metadata,
   cameraMode,
   cameraResetTrigger,
   cameraConfig,
@@ -120,6 +122,13 @@ export const ScenarioViewport = forwardRef<ScenarioViewportHandle, ScenarioViewp
       rendererRef.current.setRoadGeometry(roadGeometry);
     }
   }, [roadGeometry]);
+
+  // Update Scenario Metadata (for entity categories: pedestrian, truck, car, etc.)
+  useEffect(() => {
+    if (rendererRef.current) {
+      rendererRef.current.setScenarioMetadata(metadata || null);
+    }
+  }, [metadata]);
 
   // Update Frame during playback/stepping
   useEffect(() => {

@@ -124,16 +124,6 @@ export interface ScenarioFrame {
   object_states: ScenarioObjectState[];
 }
 
-export interface PlaybackState {
-  isLoaded: boolean;
-  isPlaying: boolean;
-  isCompleted: boolean;
-  currentTime: number;
-  speed: number;
-  objectCount: number;
-  statusText: string;
-}
-
 export interface ScenarioFileHeaderMetadata {
   description?: string;
   author?: string;
@@ -143,6 +133,24 @@ export interface ScenarioFileHeaderMetadata {
 }
 
 export type ParameterDomainCategory = 'odd' | 'behavior' | 'entity' | 'general';
+
+export type EntityVisualType =
+  | 'pedestrian'
+  | 'truck'
+  | 'car'
+  | 'bus'
+  | 'van'
+  | 'motorcycle'
+  | 'bicycle'
+  | 'misc_obstacle';
+
+export type RoadFeatureVisualType =
+  | 'crosswalk'
+  | 'building'
+  | 'tree'
+  | 'pole'
+  | 'barrier'
+  | 'obstacle';
 
 export interface ScenarioParameterMetadata {
   name: string;
@@ -203,14 +211,3 @@ export interface ScenarioMetadata {
   environment?: ScenarioEnvironmentMetadata;
   behavior?: ScenarioBehaviorMetadata;
 }
-
-export interface ScenarioFileValidation {
-  valid: boolean;
-  xoscFile?: File | null;
-  xodrFile?: File | null;
-  xoscName?: string;
-  xodrName?: string;
-  error?: string;
-  warnings?: string[];
-}
-

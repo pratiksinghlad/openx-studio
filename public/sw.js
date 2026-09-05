@@ -3,7 +3,7 @@
  * Provides offline caching, fast asset loading, and desktop PWA installability.
  */
 
-const CACHE_NAME = 'openx-studio-v1.0.0';
+const CACHE_NAME = 'openx-studio-v1.2.0';
 
 const PRECACHE_ASSETS = [
   './',
@@ -53,6 +53,11 @@ self.addEventListener('fetch', (event) => {
 
   // Only handle GET requests and same-origin HTTP/HTTPS
   if (request.method !== 'GET' || !url.protocol.startsWith('http')) {
+    return;
+  }
+
+  // Never cache or intercept requests on local development environments
+  if (url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '[::1]') {
     return;
   }
 

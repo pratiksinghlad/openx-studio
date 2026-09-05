@@ -34,8 +34,6 @@ import {
 } from '../constants/playback';
 import { PLAYER_SHORTCUTS } from '../constants/shortcuts';
 
-export { PLAYBACK_SPEEDS, formatTime };
-
 const CAMERA_BUTTON_CONFIG = [
   { mode: CAMERA_MODES.ORBIT, label: '3D', icon: Eye, tooltip: "Orbit 3D Camera (Reset to Bird's-Eye)" },
   { mode: CAMERA_MODES.FOLLOW_EGO, label: 'Follow', icon: Car, tooltip: 'Follow Ego Vehicle Chase Camera' },
