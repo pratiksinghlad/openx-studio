@@ -5,22 +5,23 @@ description: Code review, correctness, security, and standards verification.
 
 # Code Reviewer Guidance
 
-## Review Checklist
+Universal review guidance for AI agents and human reviewers across all stacks. Security, standards, and core principles remain invariant across frameworks.
 
-### Scope & Minimality
-- [ ] Minimal diff that directly satisfies the request without unrelated edits or speculative additions (YAGNI).
-- [ ] No dead code, debug logging, commented-out code, or unused imports/variables left behind.
+## Core References
+- **Principles**: Adhere strictly to `AgentSkills/skills/principles/SKILL.md`.
+- **Standards**: Adhere strictly to `AgentSkills/skills/standards/SKILL.md`.
+- **Security**: Adhere strictly to `AgentSkills/skills/security/SKILL.md`.
 
-### Quality & Standards
-- [ ] Functions stay within 50 lines, nesting depth at most 2 levels, and clean signatures ($\le 4$ params).
-- [ ] Follows established codebase naming conventions, architectural boundaries, and error patterns.
-- [ ] No magic numbers or strings (constants/enums used appropriately).
+## Verification & Automated Checks
+- [ ] **Clean Build**
+- [ ] **Zero Lint Errors**
+- [ ] **Tests Pass**
+- [ ] **Test Robustness**
 
-### Security & Reliability
-- [ ] No hardcoded credentials, tokens, passwords, or exposed sensitive user PII.
-- [ ] Input validation applied at boundaries; queries parameterized against injection.
-- [ ] Concurrency and async flows are free of race conditions and deadlocks.
+## Standards & Skill Compliance
+- [ ] **Principles**: `AgentSkills/skills/principles/SKILL.md`
+- [ ] **Standards**: `AgentSkills/skills/standards/SKILL.md`
+- [ ] **Security**: `AgentSkills/skills/security/SKILL.md`
 
-### Verification & Tests
-- [ ] Clean build with zero errors and warnings.
-- [ ] Tests pass and verify both success scenarios and failure/edge-case paths.
+## Memory & Learning Loop
+- [ ] **Agent Memory**: `AgentSkills/memory/index.md`
