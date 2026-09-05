@@ -1,6 +1,6 @@
 [config]
-model = "openrouter/deepseek/deepseek-chat"
-fallback_models = ["openrouter/anthropic/claude-3.5-sonnet"]
+model = "openrouter/thinkingmachines/inkling:free"
+fallback_models = ["openrouter/nvidia/nemotron-3.5-lightning:free"]
 git_provider = "github"
 
 [openrouter]
@@ -16,14 +16,26 @@ require_security_review = true
 require_can_be_split_review = false
 
 extra_instructions = """
-Repository Principles & Standards (from AgentSkills):
-1. Function Size: Maximum 50 lines per function.
-2. Nesting Depth: Maximum 2 levels of nesting; use early returns.
-3. Clean Signatures: Maximum 4 parameters per function (use options object otherwise).
-4. Clean Architecture: Strictly adhere to SOLID, DRY, KISS, and YAGNI.
-5. No Magic Literals: Use named constants or enums instead of raw strings or magic numbers.
-6. Security: No hardcoded secrets/credentials/tokens. Validate and sanitize untrusted inputs.
-7. Concurrency: Ensure async/await flows are free of race conditions and deadlocks.
+You MUST strictly review this PR against the project's Code Reviewer Guidance in `AgentSkills/agents/reviewer.agent.md`:
+
+### 1. Scope & Minimality
+- Minimal diff that directly satisfies the request without unrelated edits or speculative additions (YAGNI).
+- No dead code, debug logging, commented-out code, or unused imports/variables left behind.
+
+### 2. Quality & Standards
+- Functions stay within 50 lines, nesting depth at most 2 levels, and clean signatures (<= 4 params).
+- Follows established codebase naming conventions, architectural boundaries, and error patterns.
+- No magic numbers or strings (constants/enums used appropriately).
+- Adheres to SOLID, DRY, and KISS principles.
+
+### 3. Security & Reliability
+- No hardcoded credentials, tokens, passwords, or exposed sensitive user PII.
+- Input validation applied at boundaries; queries parameterized against injection.
+- Concurrency and async flows are free of race conditions and deadlocks.
+
+### 4. Verification & Tests
+- Clean build with zero errors and warnings.
+- Tests verify both success scenarios and failure/edge-case paths.
 """
 
 [pr_code_suggestions]

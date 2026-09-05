@@ -32,5 +32,5 @@ jobs:
         env:
           OPENROUTER_KEY: ${{ secrets.OPENROUTER_KEY || secrets.OPENROUTER_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CONFIG.MODEL: "openrouter/deepseek/deepseek-chat"
-          CONFIG.FALLBACK_MODELS: "['openrouter/anthropic/claude-3.5-sonnet']"
+          CONFIG.MODEL: "openrouter/thinkingmachines/inkling:free"
+          CONFIG.FALLBACK_MODELS: "['openrouter/nvidia/nemotron-3.5-lightning:free']"
