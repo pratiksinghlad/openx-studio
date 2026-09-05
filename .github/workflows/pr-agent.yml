@@ -1,0 +1,34 @@
+name: PR Agent (OpenRouter)
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: pr-agent-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  pr_agent:
+    name: PR Agent Code Review
+    # Run only for PR events or comments made on PRs (not standard issues), ignoring bot comments
+    if: ${{ (github.event.pull_request || github.event.issue.pull_request) && github.event.sender.type != 'Bot' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run PR Agent Action
+        id: pragent
+        uses: qodo-ai/pr-agent@main
+        env:
+          OPENROUTER_KEY: ${{ secrets.OPENROUTER_KEY || secrets.OPENROUTER_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

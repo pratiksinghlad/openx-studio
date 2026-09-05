@@ -1,0 +1,36 @@
+[config]
+model = "openrouter/deepseek/deepseek-chat"
+fallback_models = ["openrouter/anthropic/claude-3.5-sonnet"]
+git_provider = "github"
+
+[openrouter]
+key = "${OPENROUTER_KEY}"
+
+[pr_reviewer]
+# Provide inline code comments on the diff lines with suggestions
+inline_code_comments = true
+num_code_suggestions = 4
+require_score_review = true
+require_tests_review = true
+require_security_review = true
+require_can_be_split_review = false
+
+extra_instructions = """
+Repository Principles & Standards (from AgentSkills):
+1. Function Size: Maximum 50 lines per function.
+2. Nesting Depth: Maximum 2 levels of nesting; use early returns.
+3. Clean Signatures: Maximum 4 parameters per function (use options object otherwise).
+4. Clean Architecture: Strictly adhere to SOLID, DRY, KISS, and YAGNI.
+5. No Magic Literals: Use named constants or enums instead of raw strings or magic numbers.
+6. Security: No hardcoded secrets/credentials/tokens. Validate and sanitize untrusted inputs.
+7. Concurrency: Ensure async/await flows are free of race conditions and deadlocks.
+"""
+
+[pr_code_suggestions]
+# Enables ready-to-commit GitHub suggestion blocks
+commitable_code_suggestions = true
+num_code_suggestions = 4
+
+[pr_description]
+publish_labels = false
+add_custom_labels = []
