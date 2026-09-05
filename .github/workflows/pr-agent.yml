@@ -28,7 +28,7 @@ jobs:
 
       - name: Run PR Agent Action
         id: pragent
-        uses: qodo-ai/pr-agent@main
+        uses: the-pr-agent/pr-agent@main
         env:
           OPENROUTER_KEY: ${{ secrets.OPENROUTER_KEY || secrets.OPENROUTER_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
