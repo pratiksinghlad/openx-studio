@@ -1,0 +1,49 @@
+[config]
+model = "openrouter/thinkingmachines/inkling:free"
+fallback_models = ["openrouter/nvidia/nemotron-3.5-lightning:free"]
+custom_model_max_tokens = 32000
+git_provider = "github"
+
+[openrouter]
+key = "${OPENROUTER_API_KEY}"
+
+[pr_reviewer]
+# Provide inline code comments on the diff lines with suggestions
+inline_code_comments = true
+num_code_suggestions = 4
+require_score_review = true
+require_tests_review = true
+require_security_review = true
+require_can_be_split_review = false
+
+extra_instructions = """
+You MUST strictly review this PR against the project's Code Reviewer Guidance in `AgentSkills/agents/reviewer.agent.md`:
+
+### 1. Scope & Minimality
+- Minimal diff that directly satisfies the request without unrelated edits or speculative additions (YAGNI).
+- No dead code, debug logging, commented-out code, or unused imports/variables left behind.
+
+### 2. Quality & Standards
+- Functions stay within 50 lines, nesting depth at most 2 levels, and clean signatures (<= 4 params).
+- Follows established codebase naming conventions, architectural boundaries, and error patterns.
+- No magic numbers or strings (constants/enums used appropriately).
+- Adheres to SOLID, DRY, and KISS principles.
+
+### 3. Security & Reliability
+- No hardcoded credentials, tokens, passwords, or exposed sensitive user PII.
+- Input validation applied at boundaries; queries parameterized against injection.
+- Concurrency and async flows are free of race conditions and deadlocks.
+
+### 4. Verification & Tests
+- Clean build with zero errors and warnings.
+- Tests verify both success scenarios and failure/edge-case paths.
+"""
+
+[pr_code_suggestions]
+# Enables ready-to-commit GitHub suggestion blocks
+commitable_code_suggestions = true
+num_code_suggestions = 4
+
+[pr_description]
+publish_labels = false
+add_custom_labels = []
